@@ -1,0 +1,28 @@
+{
+  "fps": 30,
+  "plate": { "bg": "pkg:/images/bg.jpg", "fg": "pkg:/images/fg.png" },
+
+  "species": {
+    "clown":      { "count": 2, "len": 100, "pivot": [6, 32],  "speed": 55, "beat": 4.0, "behavior": "home", "home": "anemone", "r": 90 },
+    "bluetang":   { "count": 2, "len": 165, "pivot": [8, 55],  "speed": 95, "beat": 2.6, "behavior": "roam", "big": true },
+    "yellowtang": { "count": 3, "len": 140, "pivot": [10, 65], "speed": 85, "beat": 2.8, "behavior": "roam", "big": true },
+    "gramma":     { "count": 2, "len": 66,  "pivot": [4, 18],  "speed": 40, "beat": 4.5, "behavior": "home", "homes": [[300, 640, 0.55], [1690, 560, 0.5]], "r": 70 },
+    "damsel":     { "count": 6, "len": 56,  "pivot": [4, 20],  "speed": 70, "beat": 5.0, "behavior": "home", "homes": [[1520, 430, 0.45]], "r": 190, "dart": 0.25 },
+    "flame":      { "count": 1, "len": 88,  "pivot": [5, 32],  "speed": 50, "beat": 3.6, "behavior": "home", "homes": [[420, 560, 0.6]], "r": 260 }
+  },
+  "roam": { "x0": -260, "x1": 2180, "y0": 120, "y1": 760, "z0": 0.05, "z1": 0.95, "low": { "chance": 0.18, "x0": 900, "x1": 1500, "y0": 840, "y1": 900, "z0": 0.6, "z1": 0.8 } },
+  "fgZ": 0.85,
+  "haze": { "rgb": [96, 140, 175], "far": 0.55 },
+
+  "anemone": { "x": 520, "y": 700, "z": 0.6, "frames": 6, "fps": 1.4 },
+  "burrow":  { "x": 1182, "y": 930, "threat": 230 },
+  "dusters": [ { "x": 1560, "y": 640, "s": 1.0 }, { "x": 1625, "y": 700, "s": 0.8 }, { "x": 1490, "y": 725, "s": 0.9 } ],
+  "clam":    { "x": 300, "y": 860 },
+  "starfish": { "x0": 720, "x1": 1050, "y": 990, "speed": 2.5 },
+
+  "motes": { "count": 70 },
+  "rays": [ [260, 0.9], [640, 0.6], [980, 1.0], [1380, 0.7], [1700, 0.8] ],
+  "caustics": { "top": 780, "alpha": 0.32, "occluder": "pkg:/images/rocks_low.png" },
+
+  "light": { "dawn": [6.5, 8.5], "dusk": [19.5, 21.5], "night": { "rgb": [4, 14, 40], "alpha": 170 } }
+}
