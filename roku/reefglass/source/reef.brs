@@ -2,9 +2,9 @@
 ' that ties the fish (fish.brs) and the critters (critters.brs) together.
 '
 ' Draw order, back to front:
-'   bg plate (opaque) > caustics on the sand > critters on the reef > far motes
-'   > fish behind the anemone > anemone > other fish behind the foreground > light rays
-'   > fg plate > fish in front of the foreground > near motes > night overlay
+'   bg plate (opaque) > caustics on the sand (rocks redrawn over them) > far motes
+'   > fish behind the reef > light rays > fg plate (the reef) > critters on the reef
+'   > near fish, with the anemone at its depth among them > near motes > night overlay
 
 function ReefInit(cfg as object, opts as object) as object
     s = {
@@ -45,27 +45,29 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
     screen.DrawObject(0, 0, s.bg)
     screen.SetAlphaEnable(true)
     DrawCaustics(s, screen, t)
-    CrittersDraw(s, screen, t)
     DrawMotes(s, screen, 0, 0.5)
-    ' Fish are kept sorted by depth; the anemone and the foreground slot in between them.
+    ' Fish are kept sorted by depth. Far fish pass behind the reef (fg layer); the critters
+    ' live on the reef; near fish and the anemone (with its clownfish) are in front of it.
     fishes = s.fish
     n = fishes.Count()
     i = 0
-    while i < n and fishes[i].z < s.anem.z
-        FishDraw(s, screen, fishes[i])
-        i = i + 1
-    end while
-    AnemoneDraw(s, screen, t)
     while i < n and fishes[i].z < s.cfg.fgZ
         FishDraw(s, screen, fishes[i])
         i = i + 1
     end while
     DrawRays(s, screen, t)
     screen.DrawObject(0, 0, s.fg)
+    CrittersDraw(s, screen, t)
+    anemDrawn = false
     while i < n
+        if not anemDrawn and fishes[i].z >= s.anem.z
+            AnemoneDraw(s, screen, t)
+            anemDrawn = true
+        end if
         FishDraw(s, screen, fishes[i])
         i = i + 1
     end while
+    if not anemDrawn then AnemoneDraw(s, screen, t)
     DrawMotes(s, screen, 0.5, 1.01)
     if s.night > 0 then screen.DrawRect(0, 0, 1920, 1080, s.nightRgba)
 

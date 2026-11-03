@@ -67,6 +67,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         if sp.home <> invalid
             a = s.cfg.anemone
             f.hx = a.x : f.hy = a.y - 60 : f.hz = a.z
+            if a.home <> invalid then f.hx = a.home[0] : f.hy = a.home[1]
         else
             h = sp.homes[idx mod sp.homes.Count()]
             f.hx = h[0] : f.hy = h[1] : f.hz = h[2]
@@ -97,7 +98,10 @@ sub PickTarget(s as object, f as object)
     else
         f.tx = f.hx + (Rnd(0) * 2 - 1) * sp.r
         f.ty = f.hy + (Rnd(0) * 2 - 1) * sp.r * 0.5
-        f.tz = Clamp(f.hz + (Rnd(0) - 0.5) * 0.16, 0.02, 0.98)
+        f.tz = Clamp(f.hz + (Rnd(0) - 0.5) * 0.12, 0.02, 0.98)
+        ' Reef dwellers living in front of the reef layer stay in front of it.
+        fgZ = s.cfg.fgZ
+        if f.hz >= fgZ and f.tz < fgZ + 0.01 then f.tz = fgZ + 0.01
         f.timer = RndRange(3, 8)
         if sp.dart <> invalid and Rnd(0) < sp.dart then f.mul = 2.4
         ' Home fish often just hover in place for a while.

@@ -20,7 +20,7 @@ sub CrittersInit(s as object)
         k = k + 1
     end for
 
-    s.clamBmp = CreateObject("roBitmap", "pkg:/images/clam.png")
+    if cfg.clam.inPlate = invalid then s.clamBmp = CreateObject("roBitmap", "pkg:/images/clam.png")
     s.clamShimmer = CreateObject("roBitmap", "pkg:/images/clam_shimmer.png")
     s.starBmp = CreateObject("roBitmap", "pkg:/images/starfish.png")
     sf = cfg.starfish
@@ -29,7 +29,7 @@ sub CrittersInit(s as object)
     b = cfg.burrow
     s.burrow = {
         x: b.x, y: b.y, threat: b.threat
-        goby: LoadFishSprite("goby", [4, 15])
+        goby: LoadFishSprite("goby", GobyPivot(b))
         shrimpBmp: CreateObject("roBitmap", "pkg:/images/shrimp.png")
         lip: CreateObject("roBitmap", "pkg:/images/lip.png")
         puff: CreateObject("roBitmap", "pkg:/images/puff.png")
@@ -40,6 +40,11 @@ sub CrittersInit(s as object)
         puffs: [], threatNow: false
     }
 end sub
+
+function GobyPivot(b as object) as object
+    if b.goby <> invalid then return b.goby.pivot
+    return [4, 15]
+end function
 
 sub CrittersUpdate(s as object, t as float, dt as float)
     UpdateBurrow(s, t, dt)
@@ -62,8 +67,9 @@ end sub
 sub CrittersDraw(s as object, screen as object, t as float)
     ' Clam with its mantle shimmering as the light plays over it.
     c = s.cfg.clam
-    w = s.clamBmp.GetWidth() : h = s.clamBmp.GetHeight()
-    screen.DrawObject(c.x - w / 2, c.y - h, s.clamBmp)
+    ' With photoreal art the clam is part of the plate and only the shimmer is drawn.
+    w = s.clamShimmer.GetWidth() : h = s.clamShimmer.GetHeight()
+    if c.inPlate = invalid then screen.DrawObject(c.x - w / 2, c.y - h, s.clamBmp)
     sh = 0.3 + 0.2 * Sin(t * 0.8) + 0.12 * Sin(t * 2.3 + 1)
     screen.DrawObject(c.x - w / 2, c.y - h, s.clamShimmer, &hFFFFFF00 + Int(255 * sh * (0.5 + 0.5 * s.dayK)))
 
