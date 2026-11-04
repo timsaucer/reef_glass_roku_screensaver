@@ -9,11 +9,11 @@ with [mflux](https://github.com/filipstrand/mflux) on 2026-11-03 and 2026-11-04;
 | Shipped image(s) | Source | Prompt / seed | Processing |
 |---|---|---|---|
 | `bg.jpg`, `fg.png`, `rocks_low.png`, `anemone_*.png` | generated | `reef2.txt`, seed 4 | cropped (35,0,1884,1040) and scaled to 1080p; reef layer split by depth ([Depth Anything V2 Small](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf), Apache 2.0); anemone sway derived by `tools/plate.py` (`gen/plate_spec.json`) |
-| `clown_body/tail.png` | generated | `clown.txt`, seed 1 | `tools/cutout.py --fish` |
-| `bluetang_body/tail.png` | generated | `bluetang.txt`, seed 1 | `tools/cutout.py --fish` |
-| `yellowtang_body/tail.png` | generated | `yellowtang.txt`, seed 1 | `tools/cutout.py --fish` |
-| `damsel_body/tail.png` | generated | `damsel.txt`, seed 1 | `tools/cutout.py --fish` |
-| `gramma_body/tail.png` | generated | `gramma.txt`, seed 2 | `tools/cutout.py --fish` |
+| `clown_<k>b/t.png` | generated, then 3D | `clown.txt`, seed 1 | keyed (`gen/meshes/clown_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT; `gen/meshes/clown.ply`), rendered by `tools/fishviews.py` with the photo projected onto the flanks |
+| `bluetang_<k>b/t.png` | generated, then 3D | `bluetang.txt`, seed 1 | keyed (`gen/meshes/bluetang_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT; `gen/meshes/bluetang.ply`), rendered by `tools/fishviews.py` with the photo projected onto the flanks |
+| `yellowtang_<k>b/t.png` | generated, then 3D | `yellowtang.txt`, seed 1 | keyed (`gen/meshes/yellowtang_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT; `gen/meshes/yellowtang.ply`), rendered by `tools/fishviews.py` with the photo projected onto the flanks |
+| `damsel_<k>b/t.png` | generated, then 3D | `damsel.txt`, seed 1 | keyed (`gen/meshes/damsel_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT; `gen/meshes/damsel.ply`), rendered by `tools/fishviews.py` with the photo projected onto the flanks |
+| `gramma_<k>b/t.png` | generated, then 3D | `gramma.txt`, seed 2 | keyed (`gen/meshes/gramma_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT; `gen/meshes/gramma.ply`), rendered by `tools/fishviews.py` with the photo projected onto the flanks |
 | `moray.png`, `moray_jaw.png` | generated | `moray.txt`, seed 1 | `tools/cutout.py --crop 150,120,600,576`, then `tools/moray.py` (jaw split, tilt, fade) |
 | `cave_shade.png` | from `bg.jpg` | — | `tools/moray.py` |
 | `starfish.png` | generated | `starfish.txt`, seed 1 | `tools/cutout.py --squash 0.42` |

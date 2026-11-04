@@ -12,7 +12,7 @@ Status: **photoreal art in place** for the plate and all animals.
 | Fish | clownfish pair living in an anemone, blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head |
 | Critters | feather duster worms that snap shut when a fish swims close and slowly unfurl, a giant clam, a starfish crawling across the sand |
 | Moray eel | a snowflake moray lives in the cave under the right-hand rock: it breathes with a slow gape, slides out to look around, and pulls back into the dark when a big fish swims close |
-| Swimming | fish swim at any angle between side-on and nearly head-on, drawn in perspective (the nearer end larger), so they visibly come toward the glass and head off into the distance; through a turn the body bends, head first, so it curves round smoothly instead of flipping; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
+| Swimming | each fish is a 3D model (reconstructed from its photo), drawn from pre-rendered views, so it turns with real thickness and shows its face head-on; fish swim at any angle between side-on and nearly head-on, visibly coming toward the glass and heading off into the distance; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
 | Light | caustics rippling over the sand, shafts of light from the surface, drifting marine snow |
 | Time of day | follows the Roku's clock: daylight, a blue dusk and dawn, dim moonlight at night (fish slow down, caustics and light shafts fade out) |
 
@@ -42,8 +42,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 | `bg.jpg` | 1920×1080 opaque plate: rock, coral, sand, water. | no fish, no critters that move |
 | `fg.png` | near rocks/coral in front of most fish | full-frame RGBA |
 | `rocks_low.png` | plate's non-sand pixels from `caustics.top` down | drawn over the caustics so light lands on sand only |
-| `<fish>_body.png` | fish facing right, tail cut off | `pivot` in reef.json: where the tail joins, body pixels |
-| `<fish>_tail.png` | tail fin alone | its right-edge middle attaches at the pivot |
+| `<fish>_<k>b.png`, `<fish>_<k>t.png` | the fish's body and tail at the k-th heading of `views.deg` (-60 to 90 degrees; the rest are mirrors) | per view in `views.v`: fish center in the body sprite, fish center in the tail sprite, tail joint relative to the center |
 | `anemone_<n>.png` | anemone sway loop, n frames | bottom center at `anemone.x,y` |
 | `duster_crown.png`, `duster_tube.png` | feather duster fan; tube | crown's bottom center sits on the tube mouth |
 | `starfish.png` | starfish, seen at a low angle | centered |
@@ -67,9 +66,23 @@ Final art must keep these conventions so it drops in without code changes. Posit
    `tools/plate.py build`; `tools/depth.py` + `tools/layers.py --near 0.08 --matte` for the reef
    layer (quantize into `fg.png`, alpha remapped `clip((a - 0.05) / 0.5)` so the coral fully hides fish behind it); `tools/fx.py` for the caustic band height.
    `tools/coralmask.py` then writes the coarse coral map (`coral` in reef.json) from `fg.png`.
-3. Animals: drafts on a plain green background; `tools/cutout.py <draft> <name> --width <px>
-   [--fish]` keys, despills, splits the tail and writes pivots into `reef.json`. The moray: `tools/moray.py`.
-4. `tools/icons.py <screenshot>` for icons and the store poster.
+3. Animals: drafts on a plain green background; `tools/cutout.py <draft> <name> --width <px>`
+   keys and despills them.
+4. Fish views (TripoSR, in its own env; see below): key the fish whole with
+   `tools/cutout.py <draft> <name>_full --width 600` (kept in `gen/meshes/`), reconstruct it with
+   `ext/venv/bin/python tools/fish3d.py gen/meshes/<name>_full.png gen/meshes/<name>.ply`, then
+   `ext/venv/bin/python tools/fishviews.py views gen/meshes/<name>.ply <name> --photo
+   gen/meshes/<name>_full.png [--fat 1.25]` renders the turn views (the photo is projected onto
+   both flanks; `--fat` thickens thin fish a little). `fishviews.py strip` previews a turn. The moray: `tools/moray.py`.
+5. `tools/icons.py <screenshot>` for icons and the store poster.
+
+TripoSR setup (not committed; `ext/` is gitignored):
+`git clone https://github.com/VAST-AI-Research/TripoSR ext/TripoSR`, `uv venv -p 3.11 ext/venv`,
+`VIRTUAL_ENV=ext/venv uv pip install torch omegaconf einops transformers==4.44.2 trimesh
+huggingface-hub scikit-image pillow moderngl numpy imageio imagequant`. Two local patches: in
+`tsr/models/isosurface.py` marching cubes comes from scikit-image instead of torchmcubes
+(returning vertices in torchmcubes' z, y, x order), and in `tsr/utils.py` the `rembg` import is
+optional. The weights (`stabilityai/TripoSR`) download on first use.
 
 ## License
 
