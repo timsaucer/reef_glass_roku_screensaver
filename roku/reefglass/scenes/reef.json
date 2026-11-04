@@ -125,7 +125,8 @@
       "turn": 1.2,
       "near": 40,
       "hover": 0.45,
-      "radius": 70
+      "radius": 70,
+      "front": true
     }
   },
   "roam": {

@@ -70,6 +70,7 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
     if not anemDrawn then AnemoneDraw(s, screen, t)
     DrawMotes(s, screen, 0.5, 1.01)
     if s.night > 0 then screen.DrawRect(0, 0, 1920, 1080, s.nightRgba)
+    if s.opts.pose <> invalid then DrawPoses(s, screen, s.opts.pose)
 
     if s.opts.trace <> invalid and s.frame mod 15 = 0
         f = s.traced

@@ -330,6 +330,23 @@ sub FishDraw(s as object, screen as object, f as object)
     end if
 end sub
 
+' Dev: one fish of a species drawn at headings from 0 to pi (a U-turn through the glass side),
+' side by side at z = 1, over a dark band.
+sub DrawPoses(s as object, screen as object, name as string)
+    for each g in s.fish
+        if g.name = name
+            screen.DrawRect(0, 380, 1920, 320, &h102030FF)
+            f = { spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0 }
+            for i = 0 to 8
+                f.hd = 3.14159265 * i / 8
+                f.x = 120 + i * 210
+                FishDraw(s, screen, f)
+            end for
+            return
+        end if
+    end for
+end sub
+
 ' The tint with its alpha scaled by k.
 function FadeCol(col as integer, k as float) as integer
     a = col and &hFF
