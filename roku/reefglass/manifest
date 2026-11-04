@@ -7,3 +7,6 @@ ui_resolutions=fhd
 rsg_version=1.3
 splash_color=#06182A
 splash_min_time=0
+mm_icon_focus_fhd=pkg:/images/icon_fhd.jpg
+mm_icon_focus_hd=pkg:/images/icon_hd.jpg
+mm_icon_focus_sd=pkg:/images/icon_sd.jpg

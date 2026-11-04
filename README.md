@@ -3,7 +3,8 @@
 A Roku screensaver: a calm saltwater reef tank seen full screen through the glass. A photoreal
 plate of rock, coral and sand, with fish, critters and light animated over it.
 
-Status: **core animation built with placeholder art**; photoreal art not generated yet.
+Status: **photoreal art in place** for the plate and all animals except the flame angel (its
+drafts came out as the wrong fish; it is disabled with `count: 0` until a good draft exists).
 
 ## What's in the tank
 
@@ -56,7 +57,18 @@ Final art must keep these conventions so it drops in without code changes. Posit
 - `tools/run.sh [secs] [query]`: sideload the dev build, launch it, capture the console, screenshot to `build/shot.jpg`
 - launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states
 - `tools/sideload.sh roku/reefglass [--release]`, `tools/console.py <secs> [--launch]`, `tools/screenshot.sh out.jpg`
-- `tools/placeholders.py`: regenerate placeholder art
+- `tools/placeholders.py`: regenerate placeholder art (overwrites real art; for bootstrapping only)
+
+## Art pipeline
+
+1. `tools/gen.sh <prompt> <seed>...` (set `W`/`H`): one Z-Image-Turbo draft per seed, strictly
+   one at a time.
+2. Plate: crop to 16:9, `tools/plate.py grid` to read coordinates, trace `gen/plate_spec.json`,
+   `tools/plate.py build`; `tools/depth.py` + `tools/layers.py --near 0.08 --matte` for the reef
+   layer (quantize into `fg.png`); `tools/fx.py` for the caustic band height.
+3. Animals: drafts on a plain green background; `tools/cutout.py <draft> <name> --width <px>
+   [--fish]` keys, despills, splits the tail and writes pivots into `reef.json`.
+4. `tools/icons.py <screenshot>` for icons and the store poster.
 
 ## License
 
