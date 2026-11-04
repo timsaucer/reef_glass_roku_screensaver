@@ -9,7 +9,8 @@
 '   pose=<name>    draw that species through a U-turn, in 9 steps across the screen
 '                  (fine=1: only 45 to 90 degrees; pp=<0..1>: that much puffed up)
 '   puff=1         the pufferfish puffs up as soon as its cooldown allows (set short)
-'   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, face, tail) twice a second
+'   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, puff,
+'                  waypoint, U-turn direction, coral block) twice a second
 
 sub Main(args as dynamic)
     if type(args) <> "roAssociativeArray" then args = {}

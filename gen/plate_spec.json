@@ -172,5 +172,13 @@
     ],
     "amp": 6.0,
     "note": "unused since 2026-11-04: the anemone is static (its sway frames showed their cut edge); rename back to anemone/anemoneCenter/anemoneAmp to rebuild them"
-  }
+  },
+  "piles": [
+    [
+      900,
+      605,
+      1110,
+      760
+    ]
+  ]
 }

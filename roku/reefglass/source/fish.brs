@@ -304,6 +304,7 @@ sub FishUpdate(s as object, t as float, dt as float)
             dzp = (f.tz - f.z) / kz
         else if (Abs(dx) < sp.near and f.pause <= 0) or f.timer < 0
             PickTarget(s, f)
+            f.turnDir = 0
             dx = f.tx - f.x
             dzp = (f.tz - f.z) / kz
         end if
@@ -331,8 +332,14 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' A puffed-up fish barely turns.
         if f.puff > 0 then w = w * (1 - 0.85 * f.puff)
         if f.turnDir = 0 and Abs(diff) > 1.6
-            ' A U-turn: swing the head toward the glass, whichever way that is.
-            if Cos(f.hd) >= 0 then f.turnDir = 1 else f.turnDir = -1
+            ' A big turn: the shorter way round, unless that swings the fish through straight
+            ' away from the viewer (heading -90 degrees, never drawn); then the other way, past
+            ' the glass. A side-on U-turn so always swings the head toward the glass.
+            if diff >= 0 then f.turnDir = 1 else f.turnDir = -1
+            rel = -0.5 * kPi - f.hd
+            if rel < -kPi then rel = rel + 2 * kPi
+            if rel > kPi then rel = rel - 2 * kPi
+            if rel * f.turnDir > 0 and Abs(rel) < Abs(diff) then f.turnDir = -f.turnDir
         end if
         if f.turnDir <> 0
             turn = f.turnDir * w * dt
@@ -353,7 +360,12 @@ sub FishUpdate(s as object, t as float, dt as float)
 
         ' Speed: cruise, easing off only a little through turns; nearly still while hovering.
         want = f.cruise * f.mul * act * (0.8 + 0.2 * Cos(diff))
-        if f.spr.ball <> invalid then want = want * (1 - 0.85 * UpdatePuff(s, f, dt))
+        if f.spr.ball <> invalid
+            pf = UpdatePuff(s, f, dt)
+            want = want * (1 - 0.85 * pf)
+            ' Puffed up, it is not going anywhere: its waypoint does not time out meanwhile.
+            if pf > 0 then f.timer = f.timer + dt
+        end if
         if f.pause > 0
             f.pause = f.pause - dt
             want = f.cruise * 0.12

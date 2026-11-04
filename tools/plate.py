@@ -9,10 +9,15 @@ Usage:
       clam.png, clam_shimmer.png} and positions into scenes/reef.json; check images go to
       gen/work/. fg.png comes from tools/layers.py (depth), run separately.
 
+  .venv/bin/python tools/plate.py rocks --spec gen/plate_spec.json
+      rebuilds rocks_low.png alone from the finished bg.jpg
+
 The spec (hand traced on the grid image, 1080p screen px):
   {
     "sand": [[x, y], ...],              polygon of open sand; caustics land only inside it
     "causticTop": 780,                  first row of the caustic band
+    "piles": [[x0, y0, x1, y1], ...],   optional: boxes above the band whose rock and coral
+                                        (whatever is not blue water) also hide far fish
     "burrow": [x, y],                   optional: dig a burrow into the sand here
     "anemone": [[x, y], ...],           polygon around the anemone (tentacles and foot)
     "anemoneCenter": [x, y],            the oral disc; sway grows from here to the tips
@@ -143,6 +148,47 @@ def clam_shimmer(rgb, pts):
     return Image.fromarray(spr, "RGBA"), (x0, y0, w, h)
 
 
+def rocks_layer(rgb, spec, cfg):
+    """Write rocks_low.png: the reef's base rocks, drawn over the caustics and over the fish
+    behind the reef. It is everything in the caustic band that is not open sand, plus, for each
+    "pile" box above the band, the rock and coral standing out against the water there (keyed
+    by how blue a pixel is). Returns the caustic band's top row and the sand mask."""
+    top = spec["causticTop"]
+    sand = poly_mask(spec["sand"], 3)
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255
+    sand = guided(gray, sand)
+    rocks = 1 - sand
+    rocks[:top] = 0
+    otop = top
+    f = rgb.astype(np.float32)
+    blue = f[..., 2] - f[..., 0]
+    for x0, y0, x1, y1 in spec.get("piles", []):
+        k = np.clip((60 - blue[y0:y1, x0:x1]) / 30, 0, 1)
+        k = cv2.morphologyEx(k, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        k = cv2.GaussianBlur(k, (0, 0), 0.8)
+        rocks[y0:y1, x0:x1] = np.maximum(rocks[y0:y1, x0:x1], k)
+        otop = min(otop, y0)
+    # Where the coral layer (fg.png, drawn later over everything here) is solid, the rocks are
+    # never seen: leave them out, which makes this file much smaller.
+    if (IMAGES / "fg.png").exists():
+        fga = np.array(Image.open(IMAGES / "fg.png").convert("RGBA"))[..., 3]
+        rocks = rocks * (fga < 250)
+    rl = np.dstack([rgb, rocks[..., None] * 255]).clip(0, 255).astype(np.uint8)[otop:]
+    save_rgba(Image.fromarray(rl, "RGBA"), IMAGES / "rocks_low.png")
+    cfg["caustics"]["top"] = top
+    cfg["caustics"]["occluderTop"] = otop
+    return top, sand
+
+
+def rocks_only(spec_path):
+    """Rebuild rocks_low.png alone from the finished plate (bg.jpg)."""
+    spec = json.loads(Path(spec_path).read_text())
+    cfg = json.loads(SCENE.read_text())
+    rgb = np.array(Image.open(IMAGES / "bg.jpg").convert("RGB"))
+    rocks_layer(rgb, spec, cfg)
+    SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
+
+
 def build(src, spec_path):
     spec = json.loads(Path(spec_path).read_text())
     rgb = load_1080(src)
@@ -167,20 +213,7 @@ def build(src, spec_path):
         cfg["burrow"].update({"x": bx, "y": by})
     Image.fromarray(rgb).save(IMAGES / "bg.jpg", quality=88)
 
-    # Rocks over the caustic band: everything in the band that is not open sand.
-    top = spec["causticTop"]
-    sand = poly_mask(spec["sand"], 3)
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255
-    sand = guided(gray, sand)
-    rocks = 1 - sand
-    # Where the coral layer (fg.png, drawn later over everything here) is solid, the rocks are
-    # never seen: leave them out, which makes this file much smaller.
-    if (IMAGES / "fg.png").exists():
-        fga = np.array(Image.open(IMAGES / "fg.png").convert("RGBA"))[..., 3]
-        rocks = rocks * (fga < 250)
-    rl = np.dstack([rgb, rocks[..., None] * 255]).clip(0, 255).astype(np.uint8)[top:]
-    save_rgba(Image.fromarray(rl, "RGBA"), IMAGES / "rocks_low.png")
-    cfg["caustics"]["top"] = top
+    top, sand = rocks_layer(rgb, spec, cfg)
 
     SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
     chk = rgb.copy()
@@ -192,5 +225,7 @@ def build(src, spec_path):
 if __name__ == "__main__":
     if sys.argv[1] == "grid":
         grid(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "rocks":
+        rocks_only(sys.argv[sys.argv.index("--spec") + 1])
     elif sys.argv[1] == "build":
         build(sys.argv[2], sys.argv[sys.argv.index("--spec") + 1])

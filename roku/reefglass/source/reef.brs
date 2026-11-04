@@ -2,8 +2,8 @@
 ' that ties the fish (fish.brs) and the critters (critters.brs) together.
 '
 ' Draw order, back to front:
-'   bg plate (opaque) > caustics on the sand (rocks redrawn over them) > far motes
-'   > fish behind the reef > light rays > fg plate (the reef) > critters on the reef
+'   bg plate (opaque) > caustics on the sand > far motes > fish behind the reef
+'   > base rocks (redrawn from the plate) > light rays > fg plate (the reef) > critters on the reef
 '   > near fish > near motes > night overlay
 
 function ReefInit(cfg as object, opts as object) as object
@@ -55,6 +55,9 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
         FishDraw(s, screen, fishes[i])
         i = i + 1
     end while
+    ' The reef's base rocks (redrawn from the plate) cover the caustics, so the light lands on
+    ' the sand only, and hide far fish that pass low behind them.
+    screen.DrawObject(0, s.cfg.caustics.occluderTop, s.occluder)
     DrawRays(s, screen, t)
     screen.DrawObject(0, 0, s.fg)
     CrittersDraw(s, screen, t)
@@ -74,7 +77,9 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
             end for
             s.traced = f
         end if
-        print "TRACE t "; Int(t * 10) / 10.0; " x "; Int(f.x); " y "; Int(f.y); " z "; Int(f.z * 100) / 100.0; " hd "; Int(f.hd * 100) / 100.0; " spd "; Int(f.spd); " amp "; Int(f.amp * 100) / 100.0; " pause "; Int(f.pause * 10) / 10.0; " puff "; f.puff
+        tr = "TRACE t " + Str(Int(t * 10) / 10.0) + " x " + Str(Int(f.x)) + " y " + Str(Int(f.y)) + " z " + Str(Int(f.z * 100) / 100.0) + " hd " + Str(Int(f.hd * 100) / 100.0)
+        tr = tr + " spd " + Str(Int(f.spd)) + " puff " + Str(Int(f.puff * 100) / 100.0) + " tx " + Str(Int(f.tx)) + " tz " + Str(Int(f.tz * 100) / 100.0) + " td " + Str(f.turnDir) + " bk " + Str(Int(f.blockT * 10) / 10.0)
+        print tr
     end if
     if s.prof <> invalid
         p = s.prof
@@ -135,8 +140,6 @@ sub DrawCaustics(s as object, screen as object, t as float)
             screen.DrawObject(j * 1024 - off[k], top, s.caustic[k], col)
         end for
     end for
-    ' Rocks in the band are redrawn over the light, so it lands on the sand only.
-    screen.DrawObject(0, top, s.occluder)
 end sub
 
 ' Soft shafts of light from the surface, slowly breathing and swaying.

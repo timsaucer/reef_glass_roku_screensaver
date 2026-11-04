@@ -16440,7 +16440,8 @@
   "caustics": {
     "top": 735,
     "alpha": 0.28,
-    "occluder": "pkg:/images/rocks_low.png"
+    "occluder": "pkg:/images/rocks_low.png",
+    "occluderTop": 605
   },
   "light": {
     "dawn": [
