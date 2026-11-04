@@ -28,6 +28,9 @@ sub FishInit(s as object)
     s.fish = []
     ' Depth units per pixel of travel along the heading.
     s.kz = 1.0 / 800
+    ' Depth per px along a fish's body, for its perspective when angled: exaggerated, since a
+    ' real camera this close to the glass would show more taper than z alone gives.
+    s.cardKz = 1.6 * s.kz
     ' Coral map: rows of '#' (coral) and '.' (open water), one char per cell px square.
     s.coral = invalid
     if cfg.coral <> invalid
@@ -72,11 +75,24 @@ end sub
 function LoadFishSprite(name as string, pivot as object) as object
     body = CreateObject("roBitmap", "pkg:/images/" + name + "_body.png")
     tail = CreateObject("roBitmap", "pkg:/images/" + name + "_tail.png")
-    return {
+    spr = {
         body: body, tail: tail
         bw: body.GetWidth(), bh: body.GetHeight(), tw: tail.GetWidth(), th: tail.GetHeight()
-        px: pivot[0], py: pivot[1]
+        px: pivot[0], py: pivot[1], strips: [], su: []
     }
+    ' Vertical strips of the body, drawn each at its own depth when the fish swims at an angle
+    ' to the glass. Each overlaps the next by a pixel so no seams open.
+    n = 6
+    for i = 0 to n - 1
+        u0 = Int(i * spr.bw / n)
+        u1 = Int((i + 1) * spr.bw / n)
+        w = u1 - u0 + 1
+        if u0 + w > spr.bw then w = spr.bw - u0
+        spr.strips.Push(CreateObject("roRegion", body, u0, 0, w, spr.bh))
+        spr.su.Push(u0)
+    end for
+    spr.su.Push(spr.bw)
+    return spr
 end function
 
 function NewFish(s as object, sp as object, spr as object, idx as integer) as object
@@ -144,6 +160,14 @@ sub PickTarget(s as object, f as object)
         f.ty = RndRange(area.y0, area.y1)
         ' Depth: either well behind the reef or out in front of it, near the glass.
         if Rnd(0) < r.frontChance then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[1])
+        ' Now and then a fish far back comes up close to the glass on a steep course, or one at
+        ' the glass heads off steeply into the distance.
+        if not low and Rnd(0) < 0.3
+            dirx = 1
+            if Cos(f.hd) < 0 then dirx = -1
+            f.tx = f.x + dirx * RndRange(200, 400)
+            if f.z < 0.6 then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[0] + 0.3)
+        end if
         f.timer = RndRange(20, 40)
     else
         ' Keep going roughly the way it faces; only when that would leave the home range does
@@ -178,9 +202,10 @@ sub FishUpdate(s as object, t as float, dt as float)
             dzp = (f.tz - f.z) / kz
         end if
 
-        ' Steer toward the waypoint. Depth is gained gradually: the course stays within ~30
-        ' degrees of side-on, so only a real turn shows a foreshortened fish.
-        lim = 0.6 * Abs(dx)
+        ' Steer toward the waypoint, through depth as well as across. A fish may angle up to
+        ' ~70 degrees toward the glass, or ~55 degrees away from it (it is never seen from
+        ' straight behind).
+        if dzp > 0 then lim = 3.0 * Abs(dx) else lim = 1.4 * Abs(dx)
         if f.blockT > 0
             f.blockT = f.blockT - dt
             lim = 0
@@ -220,7 +245,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.spd = f.spd + (want - f.spd) * Clamp(rate * dt, 0, 1)
 
         ' Move along the heading. Far fish cover less screen for the same swimming speed.
-        sc = 0.45 + 0.55 * f.z
+        sc = 0.4 + 0.6 * f.z
         c = Cos(f.hd)
         f.x = f.x + c * f.spd * sc * dt
         zn = Clamp(f.z + Sin(f.hd) * f.spd * kz * dt, f.z0, f.z1)
@@ -303,55 +328,85 @@ sub SortFish(a as object)
 end sub
 
 sub FishDraw(s as object, screen as object, f as object)
-    sc = f.size * (0.4 + 0.6 * f.z)
     col = s.tints[Int(f.z * 20 + 0.5)]
     spr = f.spr
     c = Cos(f.hd)
-    ' Head-on weight: 1 while the fish faces the glass, 0 once it is well round to the side.
-    ' A "quarter" front sprite is a three-quarter view facing right: it covers more of the
-    ' turn, mirrored to the side the fish faces, and squeezes thin through exactly head-on
-    ' where it flips (tangs are thin discs, so that is what a real one looks like).
+    ac = Abs(c)
+    ' Close to head-on the body is nearly edge-on: the head-on sprite fades in over it.
     wf = 0
-    quarter = (f.sp.frontKind = "quarter")
-    if spr.front <> invalid and Sin(f.hd) > 0
-        if quarter then wf = SmoothStep(0.75, 0.45, Abs(c)) else wf = SmoothStep(0.55, 0.18, Abs(c))
-    end if
-    if wf < 1
-        ' Side view, its length shrinking with the heading.
-        if c >= 0
-            if c < 0.2 then c = 0.2
-        else
-            if c > -0.2 then c = -0.2
-        end if
+    if spr.front <> invalid and Sin(f.hd) > 0 then wf = SmoothStep(0.36, 0.12, ac)
+    if ac > 0.04
+        wb = 1
+        if spr.front <> invalid then wb = 1 - SmoothStep(0.22, 0.05, ac)
         tailK = 1 - f.amp * (0.5 + 0.5 * Cos(f.phase))
-        DrawFishSprite(screen, spr, f.x, f.y, sc, c, tailK, FadeCol(col, Clamp(2 - 2 * wf, 0, 1)))
+        DrawFishCard(s, screen, spr, f.x, f.y, f.z, f.size, f.hd, tailK, FadeCol(col, wb))
     end if
     if wf > 0
-        ' Front view, rocking a little with the tail beat, the head leading the turn.
+        ' Head-on view, centered a little toward the head and sized by the head's depth.
+        g = f.size
+        a = 0.2 * spr.bw * g
+        zf = f.z + a * Sin(f.hd) * s.cardKz
+        sc = g * (0.4 + 0.6 * zf)
         fb = spr.front
         fw = fb.GetWidth() : fh = fb.GetHeight()
-        c = Cos(f.hd)
-        if quarter
-            k = 0.35 + 0.65 * SmoothStep(0, 0.35, Abs(c))
-        else
-            k = 0.85 + 0.15 * Sin(f.hd)
-        end if
-        sx = sc * k * (1 + 0.04 * Sin(f.phase))
+        sx = sc * (0.8 + 0.2 * Sin(f.hd)) * (1 + 0.04 * Sin(f.phase))
         if c < 0 then sx = -sx
-        x = f.x + c * sc * spr.bw * 0.15 + 1.5 * sc * Sin(f.phase)
-        screen.DrawScaledObject(x - sx * fw / 2, f.y - sc * fh / 2, sx, sc, fb, FadeCol(col, Clamp(2 * wf, 0, 1)))
+        x = f.x + a * c * sc / g + 1.2 * sc * Sin(f.phase)
+        screen.DrawScaledObject(x - sx * fw / 2, f.y - sc * fh / 2, sx, sc, fb, FadeCol(col, wf))
     end if
+end sub
+
+' Draws the body+tail sprite as a card turned to heading hd, in perspective: each vertical
+' strip of the body is scaled by its own depth, so a fish angled toward the glass has its head
+' end larger than its tail. Side-on (hd 0 or pi) it is the plain sprite, mirrored for pi.
+sub DrawFishCard(s as object, screen as object, spr as object, x as float, y as float, z as float, g as float, hd as float, tailK as float, col as integer)
+    c = Cos(hd) : sn = Sin(hd)
+    kd = s.cardKz * sn
+    half = spr.bw / 2
+    n = spr.strips.Count()
+    ' Tail, hinged at the pivot, at the depth of the tail end.
+    ap = (spr.px - half) * g
+    zp = z + ap * kd
+    xp = x + ap * c * (0.4 + 0.6 * zp)
+    zt = z + (ap - 0.5 * spr.tw * g) * kd
+    stt = g * (0.4 + 0.6 * zt)
+    sxt = stt * c * tailK
+    screen.DrawScaledObject(xp - sxt * spr.tw, y + stt * (spr.py - spr.bh / 2 - spr.th / 2), sxt, stt, spr.tail, col)
+    ' Nearly side-on the taper is invisible: one draw for the whole body.
+    if Abs(sn) < 0.1
+        sm = g * (0.4 + 0.6 * z)
+        sx = sm * c
+        screen.DrawScaledObject(x - sx * half, y - sm * spr.bh / 2, sx, sm, spr.body, col)
+        return
+    end if
+    ' Body strips over it, tail end first. a = offset along the body in px at z = 1.
+    a = (spr.su[0] - half) * g
+    zz = z + a * kd
+    xa = x + a * c * (0.4 + 0.6 * zz)
+    for i = 0 to n - 1
+        b = (spr.su[i + 1] - half) * g
+        zb = z + b * kd
+        xb = x + b * c * (0.4 + 0.6 * zb)
+        sm = g * (0.4 + 0.6 * (z + 0.5 * (a + b) * kd))
+        sx = (xb - xa) / (spr.su[i + 1] - spr.su[i])
+        screen.DrawScaledObject(xa, y - sm * spr.bh / 2, sx, sm, spr.strips[i], col)
+        a = b : xa = xb
+    end for
 end sub
 
 ' Dev: one fish of a species drawn at headings from 0 to pi (a U-turn through the glass side),
 ' side by side at z = 1, over a dark band.
 sub DrawPoses(s as object, screen as object, name as string)
+    if s.poseA0 = invalid
+        s.poseA0 = 0.0 : s.poseA1 = 3.14159265
+        if s.opts.poseFine <> invalid then s.poseA0 = 0.785 : s.poseA1 = 1.571
+    end if
     for each g in s.fish
         if g.name = name
             screen.DrawRect(0, 380, 1920, 320, &h102030FF)
             f = { sp: g.sp, spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0 }
             for i = 0 to 8
-                f.hd = 3.14159265 * i / 8
+                f.hd = s.poseA0 + (s.poseA1 - s.poseA0) * i / 8
                 f.x = 120 + i * 210
                 FishDraw(s, screen, f)
             end for
@@ -365,18 +420,6 @@ function FadeCol(col as integer, k as float) as integer
     a = col and &hFF
     return (col and &hFFFFFF00) + Int(a * k)
 end function
-
-' Draws a body+tail sprite centered at (x, y). face is the signed x scale factor (1 right,
-' -1 left, smaller while turning). A negative scale mirrors the sprite about the draw x, so
-' screen x = x0 + sx * u holds for either sign.
-sub DrawFishSprite(screen as object, spr as object, x as float, y as float, sc as float, face as float, tailK as float, col as integer)
-    sx = sc * face
-    x0 = x - sx * spr.bw / 2
-    y0 = y - sc * spr.bh / 2
-    stx = sx * tailK
-    screen.DrawScaledObject(x0 + sx * spr.px - stx * spr.tw, y0 + sc * (spr.py - spr.th / 2), stx, sc, spr.tail, col)
-    screen.DrawScaledObject(x0, y0, sx, sc, spr.body, col)
-end sub
 
 function Min(a as float, b as float) as float
     if a < b then return a

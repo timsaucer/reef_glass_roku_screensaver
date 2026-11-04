@@ -7,6 +7,7 @@
 '   daycycle=<s>   sweep a full 24 h day every <s> seconds, to check the lighting ramps
 '   profile=1      print per-section frame timings every 5 s
 '   pose=<name>    draw that species through a U-turn, in 9 steps across the screen
+'                  (fine=1: only 45 to 90 degrees, where the head-on view fades in)
 '   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, face, tail) twice a second
 
 sub Main(args as dynamic)
@@ -17,5 +18,6 @@ sub Main(args as dynamic)
     if args.profile <> invalid then opts.profile = true
     if args.trace <> invalid then opts.trace = args.trace
 if args.pose <> invalid then opts.pose = args.pose
+if args.fine <> invalid then opts.poseFine = true
     RunReef(opts, true)
 end sub

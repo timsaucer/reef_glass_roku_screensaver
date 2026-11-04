@@ -35,8 +35,7 @@
       "big": true,
       "turn": 3.0,
       "near": 120,
-      "front": true,
-      "frontKind": "quarter"
+      "front": false
     },
     "yellowtang": {
       "count": 3,
@@ -285,21 +284,21 @@
   },
   "moray": {
     "jaw": [
-      1,
-      71
+      2,
+      97
     ],
     "jawHinge": [
-      55.8,
-      72.8
+      63.4,
+      98.7
     ],
     "shade": [
       1380,
       750
     ],
-    "x": 1408,
-    "y": 838,
-    "reach": 70,
+    "x": 1440,
+    "y": 830,
+    "reach": 160,
     "threat": 200,
-    "gape": 7
+    "gape": 6
   }
 }

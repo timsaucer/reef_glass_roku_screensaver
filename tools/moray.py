@@ -2,7 +2,7 @@
 
 Usage:
   .venv/bin/python tools/cutout.py gen/drafts/zit_moray_s1.png moray_full --crop 150,120,600,576 --width 450
-  .venv/bin/python tools/moray.py [--width 150] [--tilt 24]
+  .venv/bin/python tools/moray.py [--width 210] [--tilt 24]
 
 Reads images/moray_full.png (the keyed eel, head facing left, body running off the draft's
 right and bottom edges) and writes:
@@ -38,20 +38,26 @@ WORK = ROOT / "gen/work"
 # chin and back along the underside.
 JAW = [(0, 114), (60, 140), (120, 162), (176, 184), (196, 200), (186, 236), (140, 222), (80, 196), (30, 168), (0, 150)]
 HINGE = (184, 192)
+EXTEND = 170  # px of body added past the draft's right edge
 MOUTH = [(0, 114), (60, 140), (120, 162), (176, 184)]  # the jaw's top edge, for the lining
 # Cave opening under the right-hand rock (1080p plate px); everything outside it is rock.
-CAVE = [(1402, 884), (1404, 806), (1428, 782), (1470, 772), (1530, 771), (1566, 778), (1584, 796), (1588, 884)]
-SHADE_BOX = (1380, 750, 1620, 900)
-DEEP = (1440, 1525)  # x where the interior shade starts and where it is fully dark
+# The right-hand side of the opening follows the plate's own dark interior, so the rock wall the
+# eel slides out from behind has its real edge.
+CAVE = [(1402, 876), (1404, 806), (1428, 782), (1470, 772), (1530, 771), (1566, 778), (1604, 790), (1606, 876)]
+SHADE_BOX = (1380, 750, 1660, 900)
+WALL = (1555, 26)  # right of this x, only pixels darker than this luminance are cave interior
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--width", type=int, default=150)
+    ap.add_argument("--width", type=int, default=210)
     ap.add_argument("--tilt", type=float, default=24.0, help="degrees counterclockwise, to level the body")
     a = ap.parse_args()
 
     full = np.array(Image.open(IMAGES / "moray_full.png").convert("RGBA")).astype(np.float32)
+    # The draft cuts the body off at its right edge: continue it (mirrored) so it runs on
+    # behind the cave wall instead of ending in view.
+    full = np.pad(full, ((0, 0), (0, EXTEND), (0, 0)), mode="symmetric")
     h, w = full.shape[:2]
     jm = np.zeros((h, w), np.float32)
     cv2.fillPoly(jm, [np.array(JAW, np.int32)], 1.0)
@@ -115,11 +121,14 @@ def main():
     crop = bg[sy0:sy1, sx0:sx1]
     inside = np.zeros((1080, 1920), np.float32)
     cv2.fillPoly(inside, [np.array(CAVE, np.int32)], 1.0)
-    inside = cv2.GaussianBlur(inside, (0, 0), 2.0)[sy0:sy1, sx0:sx1]
-    xx = np.arange(sx0, sx1, dtype=np.float32)[None, :]
-    deep = np.clip((xx - DEEP[0]) / (DEEP[1] - DEEP[0]), 0, 1)
-    deep = deep * deep * (3 - 2 * deep)
-    alpha = (1 - inside) + inside * deep
+    inside = inside[sy0:sy1, sx0:sx1]
+    lum = cv2.GaussianBlur(crop.mean(axis=2), (0, 0), 1.5)
+    xx = np.arange(sx0, sx1, dtype=np.float32)[None, :].repeat(crop.shape[0], 0)
+    dark = np.clip((WALL[1] + 10 - lum) / 20, 0, 1)
+    inside = inside * np.where(xx > WALL[0], dark, 1.0)
+    inside = cv2.morphologyEx(inside, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    inside = cv2.GaussianBlur(inside, (0, 0), 1.0)
+    alpha = 1 - inside
     shade = np.dstack([crop, alpha * 255]).clip(0, 255).astype(np.uint8)
     save_rgba(Image.fromarray(shade, "RGBA"), IMAGES / "cave_shade.png")
 
@@ -129,9 +138,9 @@ def main():
         "jaw": [jx0, jy0], "jawHinge": [round(hx, 1), round(hy, 1)],
         "shade": [sx0, sy0],
     })
-    m.setdefault("x", 1408)
-    m.setdefault("y", 838)
-    m.setdefault("reach", 70)
+    m.setdefault("x", 1440)
+    m.setdefault("y", 830)
+    m.setdefault("reach", 160)
     m.setdefault("threat", 260)
     m.setdefault("gape", 9)
     cfg["moray"] = m

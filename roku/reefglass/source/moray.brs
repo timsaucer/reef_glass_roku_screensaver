@@ -1,13 +1,15 @@
 ' Snowflake moray eel living in the cave under the right-hand rock.
 '
-' The eel lies in the cave mouth facing left, its body running back into the dark. It slowly
-' slides out to look around and back in, its head bobs, and its mouth gapes in a steady
-' breathing rhythm (as morays do: they pump water over their gills). When a big fish swims
-' close it pulls back into the cave, and creeps out again once things are calm.
+' The eel lies in the cave mouth facing left, its body running back behind the cave's right
+' wall. It slides slowly out to look around and back, and its mouth opens and closes in a
+' slow, uneven breathing rhythm (morays pump water over their gills that way). When a big
+' fish swims close it pulls quickly back behind the wall, then creeps out once it is calm.
+' Its position follows a damped spring, so it eases into and out of every move.
 '
-' Sprites: moray.png (head and front body, facing left, the lower jaw cut away) and
-' moray_jaw.png (placed at "jaw" in moray.png px), rotated about "jawHinge" to gape. cave_shade.png is the plate's own dark cave interior with alpha rising
-' toward the back, drawn over the eel so its body fades into the cave.
+' Sprites: moray.png (head and front body facing left, without the lower jaw) and
+' moray_jaw.png (placed at "jaw" in moray.png px), rotated about "jawHinge" to gape.
+' cave_shade.png is the plate's rock around the cave opening, drawn over the eel so its body
+' disappears behind the real rock edge.
 
 sub MorayInit(s as object)
     c = s.cfg.moray
@@ -17,8 +19,8 @@ sub MorayInit(s as object)
         body: CreateObject("roBitmap", "pkg:/images/moray.png")
         jaw: CreateObject("roBitmap", "pkg:/images/moray_jaw.png")
         shade: CreateObject("roBitmap", "pkg:/images/cave_shade.png")
-        out: 0.6, outT: 0.6, mode: "out", wait: RndRange(6, 14), calm: 0
-        breath: 0.0, threatNow: false
+        out: 0.7, v: 0.0, outT: 0.7, mode: "out", wait: RndRange(6, 14), calm: 0
+        bph: 0.0, bper: 5.0, threatNow: false
     }
     ' The jaw is drawn rotated about its hinge: a region whose origin is moved onto the hinge.
     jb = s.moray.jaw
@@ -48,8 +50,7 @@ sub MorayUpdate(s as object, t as float, dt as float)
         e.calm = RndRange(4, 8)
     end if
     if e.mode = "hide"
-        e.out = e.out - dt / 0.6
-        if e.out < 0 then e.out = 0
+        target = 0 : k = 9.0
         if not e.threatNow
             e.calm = e.calm - dt
             if e.calm <= 0
@@ -59,30 +60,40 @@ sub MorayUpdate(s as object, t as float, dt as float)
             end if
         end if
     else
-        ' Out: every so often slide to a new resting point, sometimes far out, sometimes
-        ' nearly back inside.
+        ' Out: every so often ease to a new resting point, sometimes far out, sometimes
+        ' half back in.
         e.wait = e.wait - dt
         if e.wait <= 0
-            e.outT = RndRange(0.5, 1.0)
-            e.wait = RndRange(6, 18)
+            e.outT = RndRange(0.35, 1.0)
+            e.wait = RndRange(8, 20)
         end if
-        e.out = e.out + Clamp(e.outT - e.out, -dt / 6, dt / 6)
+        target = e.outT : k = 0.5
     end if
-    ' Breathing: gape opens and closes about every 2.5 s, quicker after a scare.
-    e.breath = e.breath + dt * 6.283 / 2.5 * (1 + 0.5 * (1 - e.out))
+    ' Critically damped spring toward the target.
+    e.v = e.v + (k * (target - e.out) - 2 * Sqr(k) * e.v) * dt
+    e.out = e.out + e.v * dt
+    ' Breathing: each cycle the mouth opens and closes over about 2.5 s, then rests; cycles
+    ' last 4 to 6.5 s.
+    e.bph = e.bph + dt / e.bper
+    if e.bph >= 1
+        e.bph = 0
+        e.bper = RndRange(4, 6.5)
+    end if
 end sub
 
 sub MorayDraw(s as object, screen as object, t as float)
     e = s.moray
     if e = invalid then return
     c = s.cfg.moray
-    x = Int(c.x + (1 - e.out) * c.reach + 3 * Sin(t * 0.37))
-    y = Int(c.y + 3 * Sin(t * 0.53 + 1) + 2 * Sin(t * 1.1))
+    x = Int(c.x + (1 - e.out) * c.reach + 0.5)
+    y = Int(c.y + 1.5 * Sin(t * 1.1) + 0.5)
     y0 = y - e.body.GetHeight() \ 2
     ' The cave is in shadow: the eel takes a dim tint.
     col = RGBA(180, 180, 175, 255)
     ' Gape: the lower jaw turns down about its hinge, then closes.
-    g = 0.5 - 0.5 * Cos(e.breath)
+    u = e.bph * e.bper / 2.5
+    g = 0
+    if u < 1 then g = Sin(3.14159 * u) * Sin(3.14159 * u)
     jh = c.jawHinge
     screen.DrawRotatedObject(x + jh[0], y0 + jh[1], g * c.gape, e.jawRegion, col)
     screen.DrawObject(x, y0, e.body, col)
