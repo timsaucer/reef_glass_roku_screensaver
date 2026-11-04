@@ -81,7 +81,7 @@ function LoadFishViews(name as string, vc as object) as object
     for each v in vc.v
         b = CreateObject("roBitmap", "pkg:/images/" + name + "_" + i.ToStr() + "b.png")
         t = CreateObject("roBitmap", "pkg:/images/" + name + "_" + i.ToStr() + "t.png")
-        spr.views.Push({ b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5] })
+        spr.views.Push({ b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: b.GetWidth() })
         i = i + 1
     end for
     ' Side view size, for coral overlap tests.
@@ -217,9 +217,6 @@ sub FishUpdate(s as object, t as float, dt as float)
         end while
         ' Turn rate from a turning circle at swimming speed; a slow fish still turns.
         w = Clamp(f.spd / f.radius, 0.7, sp.turn)
-        ' Fish whip through the middle of a turn: up to twice as fast while facing the glass.
-        ec = 1 - Abs(Cos(f.hd))
-        w = w * (1 + ec * ec)
         if f.turnDir = 0 and Abs(diff) > 1.6
             ' A U-turn: swing the head toward the glass, whichever way that is.
             if Cos(f.hd) >= 0 then f.turnDir = 1 else f.turnDir = -1
@@ -349,9 +346,19 @@ sub FishDraw(s as object, screen as object, f as object)
     while i < n - 1 and hd > 0.5 * (ang[i] + ang[i + 1])
         i = i + 1
     end while
+    ' Between views the outline still changes smoothly: the nearest view is stretched to the
+    ' width interpolated from its neighbours at this exact heading.
+    kx = 1.0
+    j = i
+    if hd < ang[i] and i > 0 then j = i - 1
+    if hd > ang[i] and i < n - 1 then j = i + 1
+    if j <> i
+        fr = (hd - ang[i]) / (ang[j] - ang[i])
+        kx = 1 + fr * (spr.views[j].w / spr.views[i].w - 1)
+    end if
     away = (Sin(f.hd) < 0)
     v = spr.views[i]
-    sx = sc * mir
+    sx = sc * mir * kx
     ' Tail behind the body, or in front when the fish swims away (tail nearer the glass).
     if not away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col)
     screen.DrawScaledObject(f.x - sx * v.bx, f.y - sc * v.by, sx, sc, v.b, col)
