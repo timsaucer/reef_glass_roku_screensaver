@@ -73,8 +73,12 @@ sub CrittersDraw(s as object, screen as object, t as float)
     sh = 0.3 + 0.2 * Sin(t * 0.8) + 0.12 * Sin(t * 2.3 + 1)
     screen.DrawObject(c.x - w / 2, c.y - h, s.clamShimmer, &hFFFFFF00 + Int(255 * sh * (0.5 + 0.5 * s.dayK)))
 
+    ' Starfish, with a soft contact shadow so it sits on the sand.
     st = s.star
-    screen.DrawObject(st.x - s.starBmp.GetWidth() / 2, s.cfg.starfish.y - s.starBmp.GetHeight() / 2, s.starBmp)
+    sw = s.starBmp.GetWidth() : shh = s.starBmp.GetHeight()
+    sy = s.cfg.starfish.y
+    screen.DrawScaledObject(st.x - sw * 0.55, sy - shh * 0.2, sw * 1.1 / 24, shh * 0.9 / 24, s.burrow.puff, &h1A140F00 + 90)
+    screen.DrawObject(st.x - sw / 2, sy - shh / 2, s.starBmp)
 
     DrawDusters(s, screen, t)
     DrawBurrow(s, screen, t)
@@ -137,13 +141,15 @@ end sub
 sub DrawDusters(s as object, screen as object, t as float)
     cw = s.crown.GetWidth() : ch = s.crown.GetHeight()
     tw = s.tube.GetWidth()
+    drop = 0
+    if s.cfg.duster <> invalid then drop = s.cfg.duster.crownDrop
     for each d in s.dusters
         if d.open > 0.05
             ' Retracting: the crown shrinks down into the tube mouth; open crowns breathe a little.
             k = d.open
             sx = d.s * (0.3 + 0.7 * k) * (1 + 0.04 * Sin(t * 0.9 + d.ph))
             sy = d.s * k
-            screen.DrawScaledObject(d.x - sx * cw / 2 + 2 * Sin(t * 0.6 + d.ph), d.y - sy * ch, sx, sy, s.crown)
+            screen.DrawScaledObject(d.x - sx * cw / 2 + 2 * Sin(t * 0.6 + d.ph), d.y - sy * (ch - drop), sx, sy, s.crown)
         end if
         screen.DrawScaledObject(d.x - d.s * tw / 2, d.y - 4 * d.s, d.s, d.s, s.tube)
     end for

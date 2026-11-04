@@ -229,5 +229,8 @@
       ],
       "alpha": 170
     }
+  },
+  "duster": {
+    "crownDrop": 8
   }
 }
