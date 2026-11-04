@@ -20,7 +20,9 @@
 ' Behaviors (reef.json "species"):
 '   roam  cruise between waypoints across the whole tank, often leaving the frame
 '   home  wander slowly around a home point (the anemone, a ledge, a coral head); "dart"
-'         adds short fast bursts, as damselfish do; "hover" is the chance of resting a while
+'         adds short fast bursts, as damselfish do; "hover" is the chance of resting a while,
+'         "shuffle" makes those rests fidgety; "excursion" is the chance of a short trip off
+'         home and back; "pair" makes the second and later fish follow the first
 
 sub FishInit(s as object)
     cfg = s.cfg
@@ -58,9 +60,20 @@ sub FishInit(s as object)
         if sp.count > 0
             spr = LoadFishViews(name, sp.views)
             s.sprites[name] = spr
+            lead = invalid
             for i = 0 to sp.count - 1
                 f = NewFish(s, sp, spr, i)
                 f.name = name
+                ' A pair (clownfish): the first is the larger female; the rest are smaller and
+                ' follow her about.
+                if sp.pair = true
+                    if lead = invalid
+                        lead = f
+                    else
+                        f.leader = lead
+                        f.size = 0.85
+                    end if
+                end if
                 s.fish.Push(f)
             end for
         end if
@@ -127,7 +140,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         mul: 1.0, timer: 0.0, pause: 0.0
         size: 1.0
         cruise: sp.speed * RndRange(0.85, 1.15)
-        big: false, turnDir: 0, blockT: 0.0
+        big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false
         radius: 0.5 * sp.sideLen
     }
     if sp.radius <> invalid then f.radius = sp.radius
@@ -202,6 +215,22 @@ sub PickTarget(s as object, f as object)
         f.timer = RndRange(8, 16)
         if sp.dart <> invalid and Rnd(0) < sp.dart then f.mul = 2.6
         if sp.hover <> invalid and Rnd(0) < sp.hover then f.pause = RndRange(2, 5)
+        if f.away = true
+            ' Back from an excursion: a pause out there, then a quick run home.
+            f.away = false
+            f.tx = f.hx + RndRange(-0.4, 0.4) * sp.r
+            f.ty = f.hy + RndRange(-0.2, 0.2) * sp.r
+            f.mul = 1.7
+            f.pause = RndRange(1, 2.5)
+        else if sp.excursion <> invalid and Rnd(0) < sp.excursion
+            ' A short excursion a little way off the anemone.
+            if Rnd(0) < 0.5 then dirx = -dirx
+            f.tx = f.hx + dirx * RndRange(sp.r + 60, sp.r + 160)
+            f.ty = f.hy + RndRange(-100, 30)
+            f.mul = 1.5
+            f.pause = 0
+            f.away = true
+        end if
     end if
 end sub
 
@@ -217,7 +246,11 @@ sub FishUpdate(s as object, t as float, dt as float)
         dzp = (f.tz - f.z) / kz
         ' Move on to the next waypoint before arriving, so the path flows instead of stopping.
         ' Arrival counts across-the-screen distance only; depth is picked up on the way.
-        if Abs(dx) < sp.near or f.timer < 0
+        if f.leader <> invalid
+            FollowLeader(f)
+            dx = f.tx - f.x
+            dzp = (f.tz - f.z) / kz
+        else if (Abs(dx) < sp.near and f.pause <= 0) or f.timer < 0
             PickTarget(s, f)
             dx = f.tx - f.x
             dzp = (f.tz - f.z) / kz
@@ -269,6 +302,12 @@ sub FishUpdate(s as object, t as float, dt as float)
         if f.pause > 0
             f.pause = f.pause - dt
             want = f.cruise * 0.12
+            ' Hovering over home, some fish shuffle a little this way and that, turning in place.
+            if sp.shuffle = true and Rnd(0) < dt * 0.5
+                f.tx = f.x + RndRange(-35, 35)
+                f.ty = f.y + RndRange(-10, 10)
+            end if
+            if sp.shuffle = true then want = f.cruise * 0.22
         end if
         rate = 1.2
         if f.mul > 1 then rate = 5.0
@@ -302,6 +341,23 @@ sub FishUpdate(s as object, t as float, dt as float)
         end if
     end for
     SortFish(s.fish)
+end sub
+
+' A follower keeps a little behind and below its leader, matching her pace: faster when it
+' falls back, nearly still when she hovers, and straight on (no fussing turns) when close.
+sub FollowLeader(f as object)
+    L = f.leader
+    gap = 0.9 * L.sp.sideLen
+    px = L.x - Cos(L.hd) * gap
+    py = L.y + 24
+    d = Sqr((px - f.x) * (px - f.x) + (py - f.y) * (py - f.y))
+    if d > gap * 0.5 then f.tx = px else f.tx = f.x + Cos(f.hd) * 60
+    f.ty = py
+    f.tz = Clamp(L.z - 0.01, f.z0, f.z1)
+    f.mul = Clamp(d / gap, 0.3, 2.2)
+    if L.pause > 0 and d < gap then f.mul = 0.15
+    f.pause = 0
+    f.timer = 10
 end sub
 
 ' True when moving to depth zn would take the fish across the reef layer while

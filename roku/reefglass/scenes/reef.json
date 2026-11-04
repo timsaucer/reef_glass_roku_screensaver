@@ -14,7 +14,7 @@
       "r": 150,
       "turn": 5.0,
       "near": 20,
-      "hover": 0.2,
+      "hover": 0.35,
       "views": {
         "deg": [
           -60,
@@ -2695,7 +2695,10 @@
         }
       },
       "sideLen": 130,
-      "ped": 0.238
+      "ped": 0.238,
+      "pair": true,
+      "excursion": 0.15,
+      "shuffle": true
     },
     "bluetang": {
       "count": 2,
