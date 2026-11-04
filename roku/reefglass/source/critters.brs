@@ -1,16 +1,8 @@
-' Reef critters: the anemone, feather duster worms and a starfish. The moray eel in the cave is
-' in moray.brs. The giant clam is part of the plate.
+' Reef critters: feather duster worms and a starfish. The moray eel in the cave is in
+' moray.brs; the anemone and giant clam are part of the plate.
 
 sub CrittersInit(s as object)
     cfg = s.cfg
-    a = cfg.anemone
-    s.anem = { x: a.x, y: a.y, z: a.z, fps: a.fps, frames: [] }
-    for i = 0 to a.frames - 1
-        s.anem.frames.Push(CreateObject("roBitmap", "pkg:/images/anemone_" + i.ToStr() + ".png"))
-    end for
-    b0 = s.anem.frames[0]
-    s.anem.w = b0.GetWidth() : s.anem.h = b0.GetHeight()
-
     s.crown = CreateObject("roBitmap", "pkg:/images/duster_crown.png")
     s.tube = CreateObject("roBitmap", "pkg:/images/duster_tube.png")
     s.dusters = []
@@ -59,19 +51,6 @@ sub CrittersDraw(s as object, screen as object, t as float)
     ' over it.
     MorayDraw(s, screen, t)
     DrawDusters(s, screen, t)
-end sub
-
-' The anemone sways through a loop of frames, crossfading between neighbors.
-sub AnemoneDraw(s as object, screen as object, t as float)
-    a = s.anem
-    n = a.frames.Count()
-    u = t * a.fps
-    i = Int(u)
-    frac = u - i
-    i = i mod n
-    x = a.x - a.w / 2 : y = a.y - a.h
-    screen.DrawObject(x, y, a.frames[i])
-    screen.DrawObject(x, y, a.frames[(i + 1) mod n], &hFFFFFF00 + Int(255 * frac))
 end sub
 
 ' Feather dusters snap shut when a fish swims close, then unfurl slowly. A quarter of them are

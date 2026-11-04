@@ -13,7 +13,7 @@
 ' beat squashes the tail horizontally; its amplitude follows swimming effort.
 '
 ' Depth z (0 far .. 1 near) sets scale, on-screen speed, haze tint and draw order. Fish change
-' depth freely in open water, but never cross the reef layer (fgZ) or the anemone's depth
+' depth freely in open water, but never cross the reef layer (fgZ)
 ' while over coral (reef.json "coral" map): that would flip them from in front of the coral
 ' to behind it in a single frame. Over open water the same change is invisible.
 '
@@ -40,7 +40,7 @@ sub FishInit(s as object)
             s.coral.rows.Push(row)
         end for
     end if
-    s.zWalls = [cfg.fgZ, cfg.anemone.z]
+    s.zWalls = [cfg.fgZ]
     ' Haze tint by depth, precomputed in 21 steps: far fish take on the water color and some
     ' transparency, so they sit back in the blue.
     hz = cfg.haze
@@ -72,18 +72,41 @@ end sub
 ' (-60 .. 90, closer together nearing head-on), a body and a tail sprite each, with where the fish's center falls
 ' in each sprite and where the tail joins the body (relative to the center, px at z = 1).
 ' Headings beyond 90 degrees are drawn as mirrors of these.
+' v: [bx, by, tx, ty, hx, hy, body page, x, y, w, h, tail page, x, y, w, h]
+function NewFishView(pages as object, v as object) as object
+    b = CreateObject("roRegion", pages[v[6]], v[7], v[8], v[9], v[10])
+    t = CreateObject("roRegion", pages[v[11]], v[12], v[13], v[14], v[15])
+    return { b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: v[9] }
+end function
+
 function LoadFishViews(name as string, vc as object) as object
     spr = { views: [], ang: [] }
     for each d in vc.deg
         spr.ang.Push(d * 3.14159265 / 180)
     end for
-    i = 0
-    for each v in vc.v
-        b = CreateObject("roBitmap", "pkg:/images/" + name + "_" + i.ToStr() + "b.png")
-        t = CreateObject("roBitmap", "pkg:/images/" + name + "_" + i.ToStr() + "t.png")
-        spr.views.Push({ b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: b.GetWidth() })
-        i = i + 1
+    ' The sprites live packed in atlas pages (<name>_atlas<p>.png).
+    pages = []
+    for p = 0 to vc.pages - 1
+        pages.Push(CreateObject("roBitmap", "pkg:/images/" + name + "_atlas" + p.ToStr() + ".png"))
     end for
+    for each v in vc.v
+        spr.views.Push(NewFishView(pages, v))
+    end for
+    ' Bent sets, for headings from index "from" on (0..90 degrees, where U-turns pass): p1/p2
+    ' half and full bend with the tail swung toward the fish's near flank (as seen at heading
+    ' 0), m1/m2 toward the far one.
+    spr.bsets = invalid
+    if vc.bend <> invalid
+        spr.bsets = {}
+        spr.bfrom = vc.bend.from
+        for each key in vc.bend.sets
+            set = []
+            for each v in vc.bend.sets[key]
+                set.Push(NewFishView(pages, v))
+            end for
+            spr.bsets[key] = set
+        end for
+    end if
     ' Side view size, for coral overlap tests.
     side = spr.views[0]
     for k = 0 to spr.ang.Count() - 1
@@ -97,7 +120,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
     f = {
         sp: sp, spr: spr
         x: 0.0, y: 0.0, z: 0.5
-        hd: 0.0, spd: 0.0, vy: 0.0, turnRate: 0.0
+        hd: 0.0, spd: 0.0, vy: 0.0, turnRate: 0.0, bend: 0.0
         tx: 0.0, ty: 0.0, tz: 0.5
         face: 1.0, amp: 0.1
         phase: Rnd(0) * 6.283
@@ -112,7 +135,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
     fgZ = s.cfg.fgZ
     if sp.behavior = "home"
         if sp.home <> invalid
-            ' Clownfish: in front of their anemone, never behind its tentacles.
+            ' Clownfish: in front of their anemone (part of the reef layer).
             a = s.cfg.anemone
             f.hx = a.home[0] : f.hy = a.home[1]
             f.z0 = a.z + 0.015 : f.z1 = 0.99
@@ -230,7 +253,13 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.hd = f.hd + turn
         if f.hd > kPi then f.hd = f.hd - 2 * kPi
         if f.hd < -kPi then f.hd = f.hd + 2 * kPi
-        if dt > 0 then f.turnRate = Abs(turn) / dt
+        if dt > 0
+            f.turnRate = Abs(turn) / dt
+            ' Body bend follows the turn: full at the slowest U-turn rate and above, signed by
+            ' which way it turns.
+            bw = Clamp(turn / dt / 0.6, -1, 1)
+            f.bend = f.bend + (bw - f.bend) * Clamp(2.5 * dt, 0, 1)
+        end if
 
         ' Speed: cruise, easing off only a little through turns; nearly still while hovering.
         want = f.cruise * f.mul * act * (0.8 + 0.2 * Cos(diff))
@@ -272,7 +301,7 @@ sub FishUpdate(s as object, t as float, dt as float)
     SortFish(s.fish)
 end sub
 
-' True when moving to depth zn would take the fish across the reef layer or the anemone while
+' True when moving to depth zn would take the fish across the reef layer while
 ' coral is behind or in front of it.
 function CrossesCoral(s as object, f as object, zn as float) as boolean
     cross = false
@@ -355,9 +384,19 @@ sub FishDraw(s as object, screen as object, f as object)
     if j <> i
         fr = (hd - ang[i]) / (ang[j] - ang[i])
         kx = 1 + fr * (spr.views[j].w / spr.views[i].w - 1)
+        if kx < 0.8 or kx > 1.25 then kx = 1
     end if
     away = (Sin(f.hd) < 0)
     v = spr.views[i]
+    ' Bent view while turning: half or full bend, tail toward the turn's inside. Mirroring
+    ' swaps the fish's flanks, so the set flips with it.
+    ab = Abs(f.bend)
+    if spr.bsets <> invalid and ab > 0.2 and i >= spr.bfrom
+        lv = "1"
+        if ab > 0.65 then lv = "2"
+        if f.bend * mir > 0 then key = "p" + lv else key = "m" + lv
+        v = spr.bsets[key][i - spr.bfrom]
+    end if
     sx = sc * mir * kx
     ' Tail behind the body, or in front when the fish swims away (tail nearer the glass).
     if not away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col)
@@ -382,7 +421,7 @@ sub DrawPoses(s as object, screen as object, name as string)
     for each g in s.fish
         if g.name = name
             screen.DrawRect(0, 380, 1920, 320, &h102030FF)
-            f = { sp: g.sp, spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0 }
+            f = { sp: g.sp, spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0, bend: 0.8 }
             for i = 0 to 8
                 f.hd = s.poseA0 + (s.poseA1 - s.poseA0) * i / 8
                 f.x = 120 + i * 210

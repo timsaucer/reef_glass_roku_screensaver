@@ -173,6 +173,11 @@ def build(src, spec_path):
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255
     sand = guided(gray, sand)
     rocks = 1 - sand
+    # Where the coral layer (fg.png, drawn later over everything here) is solid, the rocks are
+    # never seen: leave them out, which makes this file much smaller.
+    if (IMAGES / "fg.png").exists():
+        fga = np.array(Image.open(IMAGES / "fg.png").convert("RGBA"))[..., 3]
+        rocks = rocks * (fga < 250)
     rl = np.dstack([rgb, rocks[..., None] * 255]).clip(0, 255).astype(np.uint8)[top:]
     save_rgba(Image.fromarray(rl, "RGBA"), IMAGES / "rocks_low.png")
     cfg["caustics"]["top"] = top

@@ -6,7 +6,7 @@ Usage (TripoSR's env, which has moderngl and trimesh):
   ext/venv/bin/python tools/fishviews.py strip <mesh.ply> <out.png> [--photo keyed.png]
       the fish at headings -60..180 in 30 degree steps, for review
   ext/venv/bin/python tools/fishviews.py views <mesh.ply> <name> --photo keyed.png [--fat 1.0]
-      the screensaver's turn views: images/<name>_<k>b.png (body) and <name>_<k>t.png (tail)
+      the screensaver's turn views, body and tail sprites packed into images/<name>_atlas<p>.png,
       for the headings in ANGLES, -60..90 deg (the rest are mirrors), sized so the side view
       is "sideLen" px long (first time: as long as the old <name>_body/tail sprites, whose
       tail split also gives "ped", where the tail joins), and the "views" block of the species in
@@ -36,6 +36,8 @@ uniform mat3 rot;
 in vec3 pos;
 in vec3 col;
 in vec3 nrm;
+in vec3 opos;  // unbent position and normal: the photo stays pinned to the body as it bends
+in vec3 onrm;
 out vec3 vcol;
 out vec3 vn;
 out vec3 mpos;
@@ -44,8 +46,8 @@ void main() {
     gl_Position = mvp * vec4(pos, 1.0);
     vcol = col;
     vn = rot * nrm;
-    mpos = pos;
-    mn = nrm;
+    mpos = opos;
+    mn = onrm;
 }
 """
 FS = """
@@ -64,7 +66,7 @@ void main() {
     // The side photo, projected straight across onto both flanks (fish are symmetric).
     vec2 uv = vec2((mpos.y - box.x) / (box.y - box.x), (box.w - mpos.z) / (box.w - box.z));
     vec4 ph = texture(photo, uv);
-    float side = smoothstep(0.25, 0.6, abs(normalize(mn).x)) * ph.a * usePhoto;
+    float side = smoothstep(0.45, 0.8, abs(normalize(mn).x)) * ph.a * usePhoto;
     base = mix(base, ph.rgb, side);
     // Mostly the photo's own shading (baked into the colors); a little light from above
     // the camera keeps the thickness readable when the fish faces the viewer.
@@ -92,12 +94,11 @@ class Renderer:
         self.size = size
         self.ctx = moderngl.create_standalone_context()
         self.prog = self.ctx.program(vertex_shader=VS, fragment_shader=FS)
-        data = np.hstack([v, c, n]).astype("f4")
-        self.vbo = self.ctx.buffer(data.tobytes())
         self.faces = np.asarray(m.faces, np.int32)
-        self.vao = self.part(np.ones(len(self.faces), bool))
-        self.fbo = self.ctx.simple_framebuffer((size, size), components=4)
+        self.v0, self.n0, self.col = v, n, c
         self.verts = v
+        self.set_bend(0.0)
+        self.fbo = self.ctx.simple_framebuffer((size, size), components=4)
         self.prog["usePhoto"].value = 0.0
 
     def set_photo(self, path):
@@ -107,6 +108,15 @@ class Renderer:
         a = np.array(im)[..., 3]
         ys, xs = np.nonzero(a > 128)
         im = im.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+        # Use only the photo's interior: its outline (dark rims, keyed edges) would otherwise be
+        # projected onto the face and back, where the surface turns away from the side.
+        arr = np.array(im)
+        import cv2
+        al = (arr[..., 3] > 128).astype(np.uint8)
+        e = max(2, im.width // 60)
+        al = cv2.erode(al, np.ones((2 * e + 1, 2 * e + 1), np.uint8)).astype(np.float32)
+        arr[..., 3] = (cv2.GaussianBlur(al, (0, 0), e * 0.7) * 255).astype(np.uint8)
+        im = Image.fromarray(arr, "RGBA")
         tex = self.ctx.texture(im.size, 4, im.tobytes())
         tex.build_mipmaps()
         tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
@@ -117,9 +127,36 @@ class Renderer:
         self.prog["box"].value = (float(v[:, 1].min()), float(v[:, 1].max()), float(v[:, 2].min()), float(v[:, 2].max()))
         self.prog["usePhoto"].value = 1.0
 
+    def set_bend(self, beta, pivot=0.7):
+        """Bends the body sideways (about the vertical) by beta radians in all: the front
+        (head) 1 - pivot of the length stays straight, the rest curves on a circle, the tail
+        end swinging toward +x for beta > 0."""
+        self.beta, self.pivot = beta, pivot
+        v = self.bend_points(self.v0)
+        n = self.n0 if beta == 0 else np.asarray(trimesh.Trimesh(v, self.faces, process=False).vertex_normals, np.float32)
+        data = np.hstack([v, self.col, n, self.v0, self.n0]).astype("f4")
+        self.vbo = self.ctx.buffer(data.tobytes())
+        self.vao = self.part(np.ones(len(self.faces), bool))
+
+    def bend_points(self, p):
+        p = np.array(p, np.float32, ndmin=2)
+        if self.beta == 0:
+            return p.copy()
+        y0, y1 = float(self.v0[:, 1].min()), float(self.v0[:, 1].max())
+        yp = y0 + self.pivot * (y1 - y0)
+        R = (yp - y0) / self.beta
+        out = p.copy()
+        rear = p[:, 1] < yp
+        s = yp - p[rear, 1]
+        phi = s / R
+        x = p[rear, 0]
+        out[rear, 0] = R - (R - x) * np.cos(phi)
+        out[rear, 1] = yp - (R - x) * np.sin(phi)
+        return out
+
     def part(self, sel):
         ibo = self.ctx.buffer(self.faces[sel].tobytes())
-        return self.ctx.vertex_array(self.prog, [(self.vbo, "3f 3f 3f", "pos", "col", "nrm")], ibo)
+        return self.ctx.vertex_array(self.prog, [(self.vbo, "3f 3f 3f 3f 3f", "pos", "col", "nrm", "opos", "onrm")], ibo)
 
     def render(self, R, vao=None):
         """R: 3x3 rotation taking mesh coords to camera coords (x right, y up, z toward viewer)."""
@@ -188,6 +225,7 @@ def crop_alpha(im, pad=2):
 # double faces), so they are close enough that each change is a small step: wider side-on and
 # away, where a fish changes little as it turns, down to 2 degrees nearing head-on, where the
 # face and eyes move fastest.
+BEND_DEG = 36  # full bend through a turn, head to tail
 ANGLES = [-60, -50, -40, -30, -20, -10, 0, 8, 16, 24, 31, 38, 44, 50, 55, 60, 64, 68, 72, 75, 78, 81, 84, 86, 88, 90]
 
 
@@ -210,26 +248,75 @@ def export_views(r, name, S=1024):
     near = np.abs(v[:, 1] - yp) < 0.02 * (y1 - y0)
     zp = float(v[near, 2].mean()) if near.any() else 0.0
     fy = v[r.faces, 1].mean(axis=1)
-    body, tail = r.part(fy >= yp), r.part(fy < yp)
     r.size = S
     r.fbo = r.ctx.simple_framebuffer((S, S), components=4)
     ppu = S / 2 / r.radius  # render px per mesh unit
     k = total / ((y1 - y0) * ppu)  # render px to sprite px
-    views = []
-    for i, deg in enumerate(ANGLES):
-        R = rot_y(-math.radians(deg)) @ SIDE
-        out = []
-        for part, tag in ((body, "b"), (tail, "t")):
-            im, (cx0, cy0) = crop_alpha(premul_resize(r.render(R, part), k))
-            save_rgba(im, IMAGES / f"{name}_{i}{tag}.png", colors=128)
-            # Where the mesh's center (the render's center) falls in this sprite.
-            out += [round(S / 2 * k - cx0, 1), round(S / 2 * k - cy0, 1)]
-        h = R @ np.array([0, yp, zp], np.float32)
-        out += [round(float(h[0]) * ppu * k, 1), round(float(-h[1]) * ppu * k, 1)]
-        views.append(out)
-    sp["views"] = {"deg": ANGLES, "v": views}
+
+    sprites = []  # every rendered sprite, packed into atlas pages at the end
+
+    def render_set(beta, angles, suffix):
+        r.set_bend(beta)
+        body, tail = r.part(fy >= yp), r.part(fy < yp)
+        hinge = r.bend_points([0, yp, zp])[0]
+        out_views = []
+        for i, deg in angles:
+            R = rot_y(-math.radians(deg)) @ SIDE
+            out = []
+            for part, tag in ((body, "b"), (tail, "t")):
+                im, (cx0, cy0) = crop_alpha(premul_resize(r.render(R, part), k))
+                sprites.append(im)
+                # Where the mesh's center (the render's center) falls in this sprite; the
+                # sprite's atlas place is filled in after packing.
+                out += [round(S / 2 * k - cx0, 1), round(S / 2 * k - cy0, 1), len(sprites) - 1]
+            h = R @ hinge
+            out += [round(float(h[0]) * ppu * k, 1), round(float(-h[1]) * ppu * k, 1)]
+            out_views.append(out)
+        return out_views
+
+    views = render_set(0.0, list(enumerate(ANGLES)), "")
+    # Bent sets for the turn (headings 0..90, where every U-turn passes): half and full bend,
+    # tail swinging toward the near flank (p) or the far one (m).
+    fwd = [(i, d) for i, d in enumerate(ANGLES) if d >= 0]
+    sets = {}
+    for key, bf in (("p1", 0.5), ("p2", 1.0), ("m1", -0.5), ("m2", -1.0)):
+        sets[key] = render_set(bf * math.radians(BEND_DEG), fwd, key)
+    # Pack into atlas pages (shelf packing, tallest first): a few big palette PNGs instead of
+    # a thousand small ones, each of which would carry its own palette and zip entry.
+    for f in IMAGES.glob(f"{name}_atlas*.png"):
+        f.unlink()
+    order = sorted(range(len(sprites)), key=lambda j: -sprites[j].height)
+    place, pages = {}, []
+    PW = PH = 2048
+    x = y = shelf = 0
+    page = None
+    for j in order:
+        im = sprites[j]
+        w, h = im.width + 1, im.height + 1
+        if page is None or x + w > PW:
+            x, y, shelf = 0, y + shelf, 0
+        if page is None or y + h > PH:
+            page = Image.new("RGBA", (PW, PH), (0, 0, 0, 0))
+            pages.append(page)
+            x = y = shelf = 0
+        page.paste(im, (x, y))
+        place[j] = [len(pages) - 1, x, y, im.width, im.height]
+        x += w
+        shelf = max(shelf, h)
+    for pi, pg in enumerate(pages):
+        a = np.array(pg)[..., 3]
+        ys = np.nonzero(a.max(axis=1))[0]
+        pg = pg.crop((0, 0, PW, int(ys.max()) + 2))
+        save_rgba(pg, IMAGES / f"{name}_atlas{pi}.png")
+
+    def fix(vs):
+        # [bx, by, bodySprite, tx, ty, tailSprite, hx, hy] -> body/tail atlas places inline
+        return [v[0:2] + v[3:5] + v[6:8] + place[v[2]] + place[v[5]] for v in vs]
+    views = fix(views)
+    sets = {k2: fix(v2) for k2, v2 in sets.items()}
+    sp["views"] = {"deg": ANGLES, "pages": len(pages), "v": views, "bend": {"deg": BEND_DEG, "from": fwd[0][0], "sets": sets}}
     SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
-    print(f"{name}: {len(views)} views, side length {total}px, peduncle at {frac:.2f}")
+    print(f"{name}: {len(views)} views + {len(fwd)}x4 bent, {len(pages)} atlas pages, side length {total}px, peduncle at {frac:.2f}")
 
 
 if __name__ == "__main__":
@@ -240,6 +327,7 @@ if __name__ == "__main__":
     ap.add_argument("--size", type=int, default=256)
     ap.add_argument("--photo")
     ap.add_argument("--fat", type=float, default=1.0)
+    ap.add_argument("--bend", type=float, default=0.0, help="strip: bend in degrees")
     a = ap.parse_args()
     r = Renderer(a.mesh, a.size, a.fat)
     if a.photo:
@@ -250,6 +338,7 @@ if __name__ == "__main__":
         B = np.array([[0, 1, 0], [0, 0, -1], [-1, 0, 0]], np.float32)
         label_row([r.render(A), r.render(B)], a.out)
     if a.cmd == "strip":
+        r.set_bend(math.radians(a.bend))
         R0 = SIDE
         imgs = [r.render(rot_y(-math.radians(d)) @ R0) for d in range(-60, 181, 30)]
         label_row(imgs, a.out)

@@ -9,10 +9,10 @@ Status: **photoreal art in place** for the plate and all animals.
 
 | | |
 |---|---|
-| Fish | clownfish pair living in an anemone, blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head |
+| Fish | clownfish pair living in an anemone (part of the plate), blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head |
 | Critters | feather duster worms that snap shut when a fish swims close and slowly unfurl, a giant clam, a starfish crawling across the sand |
 | Moray eel | a snowflake moray lives in the cave under the right-hand rock: it breathes with a slow gape, slides out to look around, and pulls back into the dark when a big fish swims close |
-| Swimming | each fish is a 3D model (reconstructed from its photo), drawn from 26 pre-rendered views (snapping to the nearest, never blending two), so it turns with real thickness and shows its face head-on; fish swim at any angle between side-on and nearly head-on, visibly coming toward the glass and heading off into the distance; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
+| Swimming | each fish is a 3D model (reconstructed from its photo), drawn from 26 pre-rendered views (snapping to the nearest, never blending two), with half and full body-bend versions through the turn, so it turns with real thickness and shows its face head-on; fish swim at any angle between side-on and nearly head-on, visibly coming toward the glass and heading off into the distance; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
 | Light | caustics rippling over the sand, shafts of light from the surface, drifting marine snow |
 | Time of day | follows the Roku's clock: daylight, a blue dusk and dawn, dim moonlight at night (fish slow down, caustics and light shafts fade out) |
 
@@ -42,8 +42,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 | `bg.jpg` | 1920×1080 opaque plate: rock, coral, sand, water. | no fish, no critters that move |
 | `fg.png` | near rocks/coral in front of most fish | full-frame RGBA |
 | `rocks_low.png` | plate's non-sand pixels from `caustics.top` down | drawn over the caustics so light lands on sand only |
-| `<fish>_<k>b.png`, `<fish>_<k>t.png` | the fish's body and tail at the k-th heading of `views.deg` (-60 to 90 degrees; the rest are mirrors) | per view in `views.v`: fish center in the body sprite, fish center in the tail sprite, tail joint relative to the center |
-| `anemone_<n>.png` | anemone sway loop, n frames | bottom center at `anemone.x,y` |
+| `<fish>_atlas<p>.png` | the fish's body and tail sprites at every heading of `views.deg` (-60 to 90 degrees; the rest are mirrors), straight and bent, packed into atlas pages | per view in `views.v` and `views.bend.sets`: fish center in the body sprite, in the tail sprite, tail joint relative to the center, then each sprite's atlas page and rectangle |
 | `duster_crown.png`, `duster_tube.png` | feather duster fan; tube | crown's bottom center sits on the tube mouth |
 | `starfish.png` | starfish, seen at a low angle | centered |
 | `moray.png`, `moray_jaw.png`, `cave_shade.png` | eel head and front body facing left, without its lower jaw; the lower jaw; the cave's dark interior (alpha rising toward the back) | `moray.x,y` left middle when fully out; jaw hinged at `moray.jawHinge`; shade at `moray.shade` |
