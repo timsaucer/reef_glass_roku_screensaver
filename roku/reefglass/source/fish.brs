@@ -228,9 +228,10 @@ sub PickTarget(s as object, f as object)
         f.ty = RndRange(area.y0, area.y1)
         ' Depth: either well behind the reef or out in front of it, near the glass.
         if Rnd(0) < r.frontChance then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[1])
-        ' Now and then a fish far back comes up close to the glass on a steep course, or one at
-        ' the glass heads off steeply into the distance.
-        if not low and Rnd(0) < 0.3
+        ' Now and then a fish far back comes up close to the glass on a steep course, or (less
+        ' often: the tank should be busy in front of the reef) one at the glass heads off
+        ' steeply into the distance.
+        if not low and Rnd(0) < 0.3 and (f.z < 0.6 or Rnd(0) < 0.5)
             dirx = 1
             if Cos(f.hd) < 0 then dirx = -1
             f.tx = f.x + dirx * RndRange(200, 400)

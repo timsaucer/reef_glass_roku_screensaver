@@ -170,6 +170,8 @@ def rocks_layer(rgb, spec, cfg):
         k = cv2.GaussianBlur(k, (0, 0), 0.8)
         rocks[y0:y1, x0:x1] = np.maximum(rocks[y0:y1, x0:x1], k)
         otop = min(otop, y0)
+    # Never open water: a sliver above the sand line would otherwise hide far fish there.
+    rocks = rocks * np.clip((60 - blue) / 30, 0, 1)
     # "occlude" polygons (the cave mouth) are redrawn whole, so the light drawn before this
     # layer never shows in them.
     for poly in spec.get("occlude", []):
