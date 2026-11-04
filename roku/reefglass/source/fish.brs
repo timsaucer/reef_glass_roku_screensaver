@@ -22,7 +22,8 @@
 '   home  wander slowly around a home point (the anemone, a ledge, a coral head); "dart"
 '         adds short fast bursts, as damselfish do; "hover" is the chance of resting a while,
 '         "shuffle" makes those rests fidgety; "excursion" is the chance of a short trip off
-'         home and back; "pair" makes the second and later fish follow the first
+'         home and back; "pair" makes the second and later fish follow the first (any
+'         behavior); "visit" (roam) is the chance of dropping by the anemone to hover
 
 sub FishInit(s as object)
     cfg = s.cfg
@@ -140,7 +141,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         mul: 1.0, timer: 0.0, pause: 0.0
         size: 1.0
         cruise: sp.speed * RndRange(0.85, 1.15)
-        big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false
+        big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false
         radius: 0.5 * sp.sideLen
     }
     if sp.radius <> invalid then f.radius = sp.radius
@@ -177,7 +178,7 @@ sub PickTarget(s as object, f as object)
     f.mul = 1.0
     if sp.behavior = "roam"
         r = s.cfg.roam
-        ' Now and then a cruiser drops down to graze over the open sand (and spooks the goby).
+        ' Now and then a cruiser drops down to graze over the open sand.
         area = r
         low = (r.low <> invalid and Rnd(0) < r.low.chance)
         if low then area = r.low
@@ -203,6 +204,21 @@ sub PickTarget(s as object, f as object)
             if f.z < 0.6 then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[0] + 0.3)
         end if
         f.timer = RndRange(20, 40)
+        ' Roamers with a "visit" chance (the clownfish) now and then drop by the anemone and
+        ' hover over it a while, when they are in front of the reef.
+        if sp.visit <> invalid
+            if f.visiting
+                f.visiting = false
+                f.pause = RndRange(3, 6)
+            else if f.z > s.cfg.fgZ and Rnd(0) < sp.visit
+                a = s.cfg.anemone
+                f.tx = a.home[0] + RndRange(-60, 60)
+                f.ty = a.home[1] + RndRange(-30, 30)
+                f.tz = RndRange(0.93, 0.98)
+                f.visiting = true
+                f.timer = 25
+            end if
+        end if
     else
         ' Keep going roughly the way it faces; only when that would leave the home range does
         ' it pick a point back inside (and so turn around). Fewer, decisive turns look natural.

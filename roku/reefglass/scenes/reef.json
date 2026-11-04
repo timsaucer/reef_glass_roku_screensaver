@@ -7,13 +7,11 @@
   "species": {
     "clown": {
       "count": 2,
-      "speed": 28,
+      "speed": 40,
       "beat": 3.0,
-      "behavior": "home",
-      "home": "anemone",
-      "r": 150,
+      "behavior": "roam",
       "turn": 5.0,
-      "near": 20,
+      "near": 60,
       "hover": 0.35,
       "views": {
         "deg": [
@@ -2697,8 +2695,8 @@
       "sideLen": 130,
       "ped": 0.238,
       "pair": true,
-      "excursion": 0.15,
-      "shuffle": true
+      "shuffle": true,
+      "visit": 0.2
     },
     "bluetang": {
       "count": 2,

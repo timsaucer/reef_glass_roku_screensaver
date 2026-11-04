@@ -9,7 +9,7 @@ Status: **photoreal art in place** for the plate and all animals.
 
 | | |
 |---|---|
-| Fish | clownfish pair living in an anemone (part of the plate): the smaller male follows the female as she patrols it, hovers over it shuffling and turning in place, and now and then darts a short way out and back, blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head |
+| Fish | a clownfish pair roaming the whole tank, the smaller male following the female, now and then dropping by their anemone (part of the plate) to hover over it, blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head |
 | Critters | feather duster worms that snap shut when a fish swims close and slowly unfurl, a giant clam, a starfish crawling across the sand |
 | Moray eel | a snowflake moray lives in the cave under the right-hand rock: it breathes with a slow gape, slides out to look around, and pulls back into the dark when a big fish swims close |
 | Swimming | each fish is a 3D model (reconstructed from its photo), drawn from 26 pre-rendered views (snapping to the nearest, never blending two), with three strengths of body bend through the turn, so it turns with real thickness and shows its face head-on; fish swim at any angle between side-on and nearly head-on, visibly coming toward the glass and heading off into the distance; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
