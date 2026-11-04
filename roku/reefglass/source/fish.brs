@@ -1,19 +1,21 @@
 ' Fish: behavior, swimming animation and depth.
 '
 ' Each fish swims forward along a heading hd, an angle in the horizontal plane: 0 is toward
-' screen right, pi toward screen left, +/-pi/2 straight away from / toward the glass. It never
-' slides sideways or backward. Screen x moves with cos(hd), depth z with sin(hd), so a turn is
-' a real U-turn through depth: on the way round the fish points toward or away from the
-' glass, and its side-view length shrinks with |cos(hd)| before it reappears mirrored.
+' screen right, pi toward screen left, +pi/2 toward the glass. It never slides sideways or
+' backward. Screen x moves with cos(hd), depth z with sin(hd).
+'
+' Turning: a fish turns on a circle about sp.radius px across at its swimming speed, so a
+' U-turn takes a few seconds and the fish keeps swimming through it. A U-turn always swings
+' the head toward the glass: the side view narrows, crossfades into the head-on view
+' (<name>_front.png) as the fish faces the viewer, then widens again mirrored.
 '
 ' Sprites: a right-facing body plus a separate tail hinged at the body's tail pivot. The tail
-' beat squashes the tail horizontally; its amplitude follows swimming effort (speed and
-' turning), so a hovering fish only fans gently.
+' beat squashes the tail horizontally; its amplitude follows swimming effort.
 '
-' Depth z (0 far .. 1 near) sets scale, on-screen speed, haze tint and draw order. Every fish
-' keeps to a depth lane, so it never crosses the reef layer (fgZ) or the anemone while in
-' view: crossing those boundaries would flip it from in front of the coral to behind it in a
-' single frame. Cruisers change lanes only while off-screen.
+' Depth z (0 far .. 1 near) sets scale, on-screen speed, haze tint and draw order. Fish change
+' depth freely in open water, but never cross the reef layer (fgZ) or the anemone's depth
+' while over coral (reef.json "coral" map): that would flip them from in front of the coral
+' to behind it in a single frame. Over open water the same change is invisible.
 '
 ' Behaviors (reef.json "species"):
 '   roam  cruise between waypoints across the whole tank, often leaving the frame
@@ -24,9 +26,21 @@ sub FishInit(s as object)
     cfg = s.cfg
     s.sprites = {}
     s.fish = []
-    ' Depth units per pixel of travel. Large, so depth changes need little heading: fish stay
-    ' close to side-on except while actually turning round.
-    s.kz = 1.0 / 450
+    ' Depth units per pixel of travel along the heading.
+    s.kz = 1.0 / 800
+    ' Coral map: rows of '#' (coral) and '.' (open water), one char per cell px square.
+    s.coral = invalid
+    if cfg.coral <> invalid
+        s.coral = { cell: cfg.coral.cell, rows: [] }
+        for each r in cfg.coral.rows
+            row = []
+            for i = 0 to Len(r) - 1
+                row.Push(Mid(r, i + 1, 1) = "#")
+            end for
+            s.coral.rows.Push(row)
+        end for
+    end if
+    s.zWalls = [cfg.fgZ, cfg.anemone.z]
     ' Haze tint by depth, precomputed in 21 steps: far fish take on the water color and some
     ' transparency, so they sit back in the blue.
     hz = cfg.haze
@@ -43,6 +57,7 @@ sub FishInit(s as object)
         sp = cfg.species[name]
         if sp.count > 0
             spr = LoadFishSprite(name, sp.pivot)
+            if sp.front = true then spr.front = CreateObject("roBitmap", "pkg:/images/" + name + "_front.png")
             s.sprites[name] = spr
             for i = 0 to sp.count - 1
                 f = NewFish(s, sp, spr, i)
@@ -75,8 +90,10 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         mul: 1.0, timer: 0.0, pause: 0.0
         size: sp.len / spr.bw
         cruise: sp.speed * RndRange(0.85, 1.15)
-        big: false
+        big: false, turnDir: 0, blockT: 0.0
+        radius: 0.5 * sp.len
     }
+    if sp.radius <> invalid then f.radius = sp.radius
     if sp.big <> invalid then f.big = sp.big
     fgZ = s.cfg.fgZ
     if sp.behavior = "home"
@@ -91,9 +108,11 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
             f.z0 = h[2] - 0.04 : f.z1 = h[2] + 0.06
             if f.z0 < fgZ + 0.02 then f.z0 = fgZ + 0.02
             if f.z1 > 0.99 then f.z1 = 0.99
+            if sp.zr <> invalid then f.z0 = sp.zr[0] : f.z1 = sp.zr[1]
         end if
     else
-        SetLane(s, f, Rnd(0) < s.cfg.roam.frontChance)
+        r = s.cfg.roam
+        f.z0 = r.back[0] : f.z1 = r.front[1]
     end if
     PickTarget(s, f)
     f.x = f.tx : f.y = f.ty : f.z = f.tz
@@ -102,16 +121,6 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
     PickTarget(s, f)
     return f
 end function
-
-' Cruiser depth lanes: behind the reef layer, or close to the glass in front of everything.
-sub SetLane(s as object, f as object, front as boolean)
-    r = s.cfg.roam
-    if front
-        f.z0 = r.front[0] : f.z1 = r.front[1]
-    else
-        f.z0 = r.back[0] : f.z1 = r.back[1]
-    end if
-end sub
 
 sub PickTarget(s as object, f as object)
     sp = f.sp
@@ -133,7 +142,8 @@ sub PickTarget(s as object, f as object)
             end if
         end if
         f.ty = RndRange(area.y0, area.y1)
-        f.tz = RndRange(f.z0, f.z1)
+        ' Depth: either well behind the reef or out in front of it, near the glass.
+        if Rnd(0) < r.frontChance then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[1])
         f.timer = RndRange(20, 40)
     else
         ' Keep going roughly the way it faces; only when that would leave the home range does
@@ -168,9 +178,13 @@ sub FishUpdate(s as object, t as float, dt as float)
             dzp = (f.tz - f.z) / kz
         end if
 
-        ' Turn toward the waypoint at a limited rate. Depth is gained gradually: the course
-        ' stays within ~24 degrees of side-on, so only a real turn shows a foreshortened fish.
-        lim = 0.45 * Abs(dx)
+        ' Steer toward the waypoint. Depth is gained gradually: the course stays within ~30
+        ' degrees of side-on, so only a real turn shows a foreshortened fish.
+        lim = 0.6 * Abs(dx)
+        if f.blockT > 0
+            f.blockT = f.blockT - dt
+            lim = 0
+        end if
         diff = Atan2(Clamp(dzp, -lim, lim), dx) - f.hd
         while diff > kPi
             diff = diff - 2 * kPi
@@ -178,15 +192,25 @@ sub FishUpdate(s as object, t as float, dt as float)
         while diff < -kPi
             diff = diff + 2 * kPi
         end while
-        maxTurn = sp.turn * dt
-        turn = Clamp(diff, -maxTurn, maxTurn)
+        ' Turn rate from a turning circle at swimming speed; a slow fish still turns.
+        w = Clamp(f.spd / f.radius, 0.7, sp.turn)
+        if f.turnDir = 0 and Abs(diff) > 1.6
+            ' A U-turn: swing the head toward the glass, whichever way that is.
+            if Cos(f.hd) >= 0 then f.turnDir = 1 else f.turnDir = -1
+        end if
+        if f.turnDir <> 0
+            turn = f.turnDir * w * dt
+            if Abs(diff) < 0.3 then f.turnDir = 0
+        else
+            turn = Clamp(diff, -w * dt, w * dt)
+        end if
         f.hd = f.hd + turn
         if f.hd > kPi then f.hd = f.hd - 2 * kPi
         if f.hd < -kPi then f.hd = f.hd + 2 * kPi
         if dt > 0 then f.turnRate = Abs(turn) / dt
 
-        ' Speed: cruise, slower through sharp turns, nearly still while hovering.
-        want = f.cruise * f.mul * act * (0.55 + 0.45 * Cos(diff))
+        ' Speed: cruise, easing off only a little through turns; nearly still while hovering.
+        want = f.cruise * f.mul * act * (0.8 + 0.2 * Cos(diff))
         if f.pause > 0
             f.pause = f.pause - dt
             want = f.cruise * 0.12
@@ -199,19 +223,14 @@ sub FishUpdate(s as object, t as float, dt as float)
         sc = 0.45 + 0.55 * f.z
         c = Cos(f.hd)
         f.x = f.x + c * f.spd * sc * dt
-        f.z = Clamp(f.z + Sin(f.hd) * f.spd * kz * dt, f.z0, f.z1)
+        zn = Clamp(f.z + Sin(f.hd) * f.spd * kz * dt, f.z0, f.z1)
+        ' Over coral a fish holds its side of the reef, and swims side-on until clear of it.
+        if CrossesCoral(s, f, zn) then f.blockT = 1.5 else f.z = zn
         ' Gentle climbs and dives toward the waypoint's height.
         vyWant = Clamp((f.ty - f.y) * 0.6, -0.35 * f.spd, 0.35 * f.spd)
         f.vy = f.vy + (vyWant - f.vy) * Clamp(1.5 * dt, 0, 1)
         f.y = f.y + f.vy * sc * dt
 
-        ' Side-view length follows the heading. Head-on a fish still shows its thickness.
-        if c >= 0
-            if c < 0.22 then c = 0.22
-        else
-            if c > -0.22 then c = -0.22
-        end if
-        f.face = c
 
         ' Tail: amplitude follows effort (speed relative to cruise, plus turning); frequency
         ' rises a little with speed.
@@ -220,15 +239,43 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.amp = f.amp + (a - f.amp) * Clamp(3 * dt, 0, 1)
         f.phase = f.phase + dt * 6.283 * sp.beat * (0.5 + 0.5 * Clamp(effort, 0, 2))
 
-        ' Cruisers well off-screen may change depth lane; nobody can see the jump.
+        ' Cruisers well off-screen may jump to a new depth; nobody can see it.
         if sp.behavior = "roam" and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
-            SetLane(s, f, Rnd(0) < s.cfg.roam.frontChance)
-            f.z = RndRange(f.z0, f.z1)
-            f.tz = RndRange(f.z0, f.z1)
+            r = s.cfg.roam
+            if Rnd(0) < r.frontChance then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
+            f.tz = f.z
         end if
     end for
     SortFish(s.fish)
 end sub
+
+' True when moving to depth zn would take the fish across the reef layer or the anemone while
+' coral is behind or in front of it.
+function CrossesCoral(s as object, f as object, zn as float) as boolean
+    cross = false
+    for each w in s.zWalls
+        if (f.z - w) * (zn - w) <= 0 and f.z <> zn then cross = true
+    end for
+    if not cross or s.coral = invalid then return false
+    c = s.coral
+    sc = f.size * (0.4 + 0.6 * f.z)
+    hl = 0.5 * sc * f.spr.bw + 0.3 * sc * f.spr.tw
+    hh = 0.4 * sc * f.spr.bh
+    nr = c.rows.Count()
+    gy0 = Int((f.y - hh) / c.cell) : gy1 = Int((f.y + hh) / c.cell)
+    gx0 = Int((f.x - hl) / c.cell) : gx1 = Int((f.x + hl) / c.cell)
+    for gy = gy0 to gy1
+        if gy >= 0 and gy < nr
+            row = c.rows[gy]
+            for gx = gx0 to gx1
+                if gx >= 0 and gx < row.Count()
+                    if row[gx] then return true
+                end if
+            end for
+        end if
+    end for
+    return false
+end function
 
 function Atan2(y as float, x as float) as float
     if x > 0 then return Atn(y / x)
@@ -257,9 +304,37 @@ end sub
 
 sub FishDraw(s as object, screen as object, f as object)
     sc = f.size * (0.4 + 0.6 * f.z)
-    tailK = 1 - f.amp * (0.5 + 0.5 * Cos(f.phase))
-    DrawFishSprite(screen, f.spr, f.x, f.y, sc, f.face, tailK, s.tints[Int(f.z * 20 + 0.5)])
+    col = s.tints[Int(f.z * 20 + 0.5)]
+    spr = f.spr
+    c = Cos(f.hd)
+    ' Head-on weight: 1 while the fish faces the glass, 0 once it is well round to the side.
+    wf = 0
+    if spr.front <> invalid and Sin(f.hd) > 0 then wf = SmoothStep(0.55, 0.18, Abs(c))
+    if wf < 1
+        ' Side view, its length shrinking with the heading.
+        if c >= 0
+            if c < 0.2 then c = 0.2
+        else
+            if c > -0.2 then c = -0.2
+        end if
+        tailK = 1 - f.amp * (0.5 + 0.5 * Cos(f.phase))
+        DrawFishSprite(screen, spr, f.x, f.y, sc, c, tailK, FadeCol(col, Clamp(2 - 2 * wf, 0, 1)))
+    end if
+    if wf > 0
+        ' Head-on view, rocking a little with the tail beat, the head leading the turn.
+        fb = spr.front
+        fw = fb.GetWidth() : fh = fb.GetHeight()
+        sx = sc * (0.85 + 0.15 * Sin(f.hd)) * (1 + 0.04 * Sin(f.phase))
+        x = f.x + Cos(f.hd) * sc * spr.bw * 0.15 + 1.5 * sc * Sin(f.phase)
+        screen.DrawScaledObject(x - sx * fw / 2, f.y - sc * fh / 2, sx, sc, fb, FadeCol(col, Clamp(2 * wf, 0, 1)))
+    end if
 end sub
+
+' The tint with its alpha scaled by k.
+function FadeCol(col as integer, k as float) as integer
+    a = col and &hFF
+    return (col and &hFFFFFF00) + Int(a * k)
+end function
 
 ' Draws a body+tail sprite centered at (x, y). face is the signed x scale factor (1 right,
 ' -1 left, smaller while turning). A negative scale mirrors the sprite about the draw x, so

@@ -79,7 +79,7 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
             end for
             s.traced = f
         end if
-        print "TRACE t "; Int(t * 10) / 10.0; " x "; Int(f.x); " y "; Int(f.y); " z "; Int(f.z * 100) / 100.0; " hd "; Int(f.hd * 100) / 100.0; " spd "; Int(f.spd); " face "; Int(f.face * 100) / 100.0; " amp "; Int(f.amp * 100) / 100.0; " pause "; Int(f.pause * 10) / 10.0
+        print "TRACE t "; Int(t * 10) / 10.0; " x "; Int(f.x); " y "; Int(f.y); " z "; Int(f.z * 100) / 100.0; " hd "; Int(f.hd * 100) / 100.0; " spd "; Int(f.spd); " amp "; Int(f.amp * 100) / 100.0; " pause "; Int(f.pause * 10) / 10.0
     end if
     if s.prof <> invalid
         p = s.prof
@@ -91,7 +91,9 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
             for each d in s.dusters
                 dm = dm + d.mode + " "
             end for
-            print "     goby "; s.burrow.gmode; " shrimp "; s.burrow.smode; " puffs "; s.burrow.puffs.Count(); " dusters "; dm
+            mm = "none"
+            if s.moray <> invalid then mm = s.moray.mode
+            print "     moray "; mm; " dusters "; dm
             p.upd = 0 : p.drw = 0 : p.n = 0
             p.report.Mark()
         end if

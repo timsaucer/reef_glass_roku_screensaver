@@ -13,10 +13,10 @@ The spec (hand traced on the grid image, 1080p screen px):
   {
     "sand": [[x, y], ...],              polygon of open sand; caustics land only inside it
     "causticTop": 780,                  first row of the caustic band
-    "burrow": [x, y],                   where to dig the goby's burrow (on the sand)
+    "burrow": [x, y],                   optional: dig a burrow into the sand here
     "anemone": [[x, y], ...],           polygon around the anemone (tentacles and foot)
     "anemoneCenter": [x, y],            the oral disc; sway grows from here to the tips
-    "clam": [[x, y], ...]               polygon around the clam's mantle, for the shimmer
+    "clam": [[x, y], ...]               optional: polygon around the clam's mantle, for a shimmer
   }
 
 The anemone and clam stay in the plate. The anemone's sway frames are the plate's own
@@ -160,10 +160,11 @@ def build(src, spec_path):
         save_rgba(sh, IMAGES / "clam_shimmer.png")
         cfg["clam"] = {"x": cx + cw // 2, "y": cy + chh, "inPlate": True}
 
-    bx, by = spec["burrow"]
-    rgb, lip, _ = dig_burrow(rgb, bx, by)
-    save_rgba(lip, IMAGES / "lip.png")
-    cfg["burrow"].update({"x": bx, "y": by})
+    if "burrow" in spec:
+        bx, by = spec["burrow"]
+        rgb, lip, _ = dig_burrow(rgb, bx, by)
+        save_rgba(lip, IMAGES / "lip.png")
+        cfg["burrow"].update({"x": bx, "y": by})
     Image.fromarray(rgb).save(IMAGES / "bg.jpg", quality=88)
 
     # Rocks over the caustic band: everything in the band that is not open sand.

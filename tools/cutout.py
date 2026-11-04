@@ -15,6 +15,9 @@ green spill is removed from its edges.
           roku/reefglass/scenes/reef.json (species <name>, or burrow.goby for the goby)
 --flip    mirror first (sprites must face right)
 --squash  scale height by this factor (a starfish seen at a low angle on the sand)
+--front   a head-on view of fish <name>: scaled to the height of <name>_body.png (times
+          --width/100, default 100 = same height) and saved as <name>_front.png; sets the
+          species' "front" flag in reef.json
 Writes gen/work/<name>_check.png (the cut over magenta) for review.
 """
 import argparse
@@ -38,6 +41,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("src")
 ap.add_argument("name")
 ap.add_argument("--width", type=int, required=True)
+ap.add_argument("--front", action="store_true")
 ap.add_argument("--fish", action="store_true")
 ap.add_argument("--flip", action="store_true")
 ap.add_argument("--crop")
@@ -89,8 +93,12 @@ rgba = rgba[y0:y1, x0:x1]
 
 # Downscale in premultiplied alpha so edges don't pick up dark or green fringes.
 im = Image.fromarray(rgba, "RGBA").convert("RGBa")
-w = a.width
-h = max(1, round(rgba.shape[0] * w / rgba.shape[1] * a.squash))
+if a.front:
+    h = round(Image.open(IMAGES / f"{a.name}_body.png").height * a.width / 100)
+    w = max(1, round(rgba.shape[1] * h / rgba.shape[0]))
+else:
+    w = a.width
+    h = max(1, round(rgba.shape[0] * w / rgba.shape[1] * a.squash))
 im = im.resize((w, h), Image.LANCZOS).convert("RGBA")
 WORK.mkdir(parents=True, exist_ok=True)
 
@@ -99,6 +107,15 @@ def check(img, path):
     bg = Image.new("RGBA", img.size, (255, 0, 255, 255))
     Image.alpha_composite(bg, img).save(path)
 
+
+if a.front:
+    save_rgba(im, IMAGES / f"{a.name}_front.png")
+    check(im, WORK / f"{a.name}_front_check.png")
+    cfg = json.loads(SCENE.read_text())
+    cfg["species"][a.name]["front"] = True
+    SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
+    print(f"{a.name}_front.png {w}x{h}")
+    sys.exit()
 
 if not a.fish:
     save_rgba(im, IMAGES / f"{a.name}.png")
