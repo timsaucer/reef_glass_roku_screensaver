@@ -249,7 +249,9 @@ def soft(name, size, inner=0.0):
 
 
 def ray():
-    w, h = 160, 900
+    # Drawn 1.1x tall from y = -40, it fades out by y ~ 700: in open water, above the reef's
+    # base and the cave.
+    w, h = 160, 680
     x = np.linspace(-1, 1, w)[None, :]
     y = np.linspace(0, 1, h)[:, None]
     a = np.clip(1 - np.abs(x) / (0.4 + 0.6 * y), 0, 1) ** 1.5 * (1 - y) ** 1.3

@@ -65,6 +65,10 @@ Final art must keep these conventions so it drops in without code changes. Posit
    `tools/plate.py build`; `tools/depth.py` + `tools/layers.py --near 0.08 --matte` for the reef
    layer (quantize into `fg.png`, alpha remapped `clip((a - 0.05) / 0.5)` so the coral fully hides fish behind it); `tools/fx.py` for the caustic band height.
    `tools/coralmask.py` then writes the coarse coral map (`coral` in reef.json) from `fg.png`.
+   `tools/plate.py rocks` rebuilds `rocks_low.png` alone (base rocks, the rock pile in
+   `piles`, the cave mouth in `occlude`); it is drawn over the light rays and the far fish.
+   Last, `tools/regions.py` writes the rectangles of `fg.png` and `rocks_low.png` that hold
+   pixels, so only those are drawn (blending transparent area costs GPU time).
 3. Animals: drafts on a plain green background; `tools/cutout.py <draft> <name> --width <px>`
    keys and despills them.
 4. Fish views (TripoSR, in its own env; see below): key the fish whole with

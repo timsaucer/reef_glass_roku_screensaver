@@ -2,8 +2,9 @@
 ' that ties the fish (fish.brs) and the critters (critters.brs) together.
 '
 ' Draw order, back to front:
-'   bg plate (opaque) > caustics on the sand > far motes > fish behind the reef
-'   > base rocks (redrawn from the plate) > light rays > fg plate (the reef) > critters on the reef
+'   bg plate (opaque) > caustics on the sand > far motes > fish behind the reef > light rays
+'   > base rocks and cave mouth (redrawn from the plate) > fg plate (the reef) > critters
+'   on the reef
 '   > near fish > near motes > night overlay
 
 function ReefInit(cfg as object, opts as object) as object
@@ -25,12 +26,43 @@ function ReefInit(cfg as object, opts as object) as object
     if opts.profile <> invalid then s.prof = { clock: CreateObject("roTimespan"), report: CreateObject("roTimespan"), upd: 0, drw: 0, n: 0 }
     FishInit(s)
     CrittersInit(s)
+    ' Each mote sways with one of four shared phases (four Sin calls a frame, not one each).
     for i = 1 to cfg.motes.count
-        s.motes.Push({ x: Rnd(0) * 1920, y: Rnd(0) * 1080, z: Rnd(0), ph: Rnd(0) * 6.283 })
+        z = Rnd(0)
+        s.motes.Push({ x: Rnd(0) * 1920, y: Rnd(0) * 1080, z: z, g: i mod 4, sc: 0.3 + 0.7 * z, vx: 4 + 10 * z, vy: 2 + 7 * z, col: 0 })
+    end for
+    ' Big alpha layers are drawn only where they hold pixels (tools/regions.py): the GPU's
+    ' blend cost grows with area, and most of them is transparent.
+    s.fgParts = LayerParts(s.fg, cfg.plate.fgRects, 0)
+    s.occluderParts = LayerParts(s.occluder, cfg.caustics.occluderRects, cfg.caustics.occluderTop)
+    ' Motes, split by depth once: the far ones go behind the fish, the near ones in front.
+    s.motesFar = [] : s.motesNear = []
+    for each mo in s.motes
+        if mo.z < 0.5 then s.motesFar.Push(mo) else s.motesNear.Push(mo)
     end for
     UpdateLight(s, 0)
     return s
 end function
+
+' Sub-rectangles [x, y, w, h] of a layer bitmap, each with where it lands on screen (the
+' layer's top at y0). No list: the whole bitmap.
+function LayerParts(bmp as object, rects as dynamic, y0 as integer) as object
+    parts = []
+    if rects = invalid
+        parts.Push({ r: bmp, x: 0, y: y0 })
+        return parts
+    end if
+    for each q in rects
+        parts.Push({ r: CreateObject("roRegion", bmp, q[0], q[1], q[2], q[3]), x: q[0], y: y0 + q[1] })
+    end for
+    return parts
+end function
+
+sub DrawParts(screen as object, parts as object)
+    for each p in parts
+        screen.DrawObject(p.x, p.y, p.r)
+    end for
+end sub
 
 sub ReefFrame(s as object, screen as object, t as float, dt as float)
     if s.prof <> invalid then s.prof.clock.Mark()
@@ -45,7 +77,7 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
     screen.DrawObject(0, 0, s.bg)
     screen.SetAlphaEnable(true)
     DrawCaustics(s, screen, t)
-    DrawMotes(s, screen, 0, 0.5)
+    DrawMotes(s, screen, s.motesFar)
     ' Fish are kept sorted by depth. Far fish pass behind the reef (fg layer); the critters
     ' live on the reef; near fish (the clownfish among them) are in front of it.
     fishes = s.fish
@@ -55,17 +87,18 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
         FishDraw(s, screen, fishes[i])
         i = i + 1
     end while
-    ' The reef's base rocks (redrawn from the plate) cover the caustics, so the light lands on
-    ' the sand only, and hide far fish that pass low behind them.
-    screen.DrawObject(0, s.cfg.caustics.occluderTop, s.occluder)
     DrawRays(s, screen, t)
-    screen.DrawObject(0, 0, s.fg)
+    ' The reef's base rocks and the cave mouth, redrawn from the plate: they cover the caustics
+    ' and the rays (light lands on the sand and the water only, the cave stays dark) and hide
+    ' far fish passing low behind them.
+    DrawParts(screen, s.occluderParts)
+    DrawParts(screen, s.fgParts)
     CrittersDraw(s, screen, t)
     while i < n
         FishDraw(s, screen, fishes[i])
         i = i + 1
     end while
-    DrawMotes(s, screen, 0.5, 1.01)
+    DrawMotes(s, screen, s.motesNear)
     if s.night > 0 then screen.DrawRect(0, 0, 1920, 1080, s.nightRgba)
     if s.opts.pose <> invalid then DrawPoses(s, screen, s.opts.pose)
 
@@ -125,6 +158,11 @@ sub UpdateLight(s as object, t as float)
     na = 0.5
     if lt.nightActivity <> invalid then na = lt.nightActivity
     s.activity = na + (1 - na) * s.dayK
+    ' Mote colors follow the light; they change slowly, so once a second will do.
+    lum = 0.4 + 0.6 * s.dayK
+    for each mo in s.motes
+        mo.col = &hE0F0FF00 + Int((30 + 90 * mo.z) * lum)
+    end for
 end sub
 
 ' Two caustic bands scroll over the sand in opposite directions; where they cross, the pattern
@@ -157,9 +195,10 @@ end sub
 ' Marine snow: tiny specks sinking slowly on a gentle current. Near ones are larger, brighter
 ' and faster.
 sub UpdateMotes(s as object, t as float, dt as float)
+    sw = [6 * Sin(t * 0.3) * dt, 6 * Sin(t * 0.3 + 1.57) * dt, 6 * Sin(t * 0.3 + 3.14) * dt, 6 * Sin(t * 0.3 + 4.71) * dt]
     for each mo in s.motes
-        mo.x = mo.x + (4 + 10 * mo.z) * dt + 6 * Sin(t * 0.3 + mo.ph) * dt
-        mo.y = mo.y + (2 + 7 * mo.z) * dt
+        mo.x = mo.x + mo.vx * dt + sw[mo.g]
+        mo.y = mo.y + mo.vy * dt
         if mo.x > 1930 then mo.x = -10
         if mo.y > 1090
             mo.y = -10
@@ -168,12 +207,9 @@ sub UpdateMotes(s as object, t as float, dt as float)
     end for
 end sub
 
-sub DrawMotes(s as object, screen as object, z0 as float, z1 as float)
-    lum = 0.4 + 0.6 * s.dayK
-    for each mo in s.motes
-        if mo.z >= z0 and mo.z < z1
-            sc = 0.3 + 0.7 * mo.z
-            screen.DrawScaledObject(mo.x, mo.y, sc, sc, s.mote, &hE0F0FF00 + Int((30 + 90 * mo.z) * lum))
-        end if
+sub DrawMotes(s as object, screen as object, list as object)
+    bmp = s.mote
+    for each mo in list
+        screen.DrawScaledObject(mo.x, mo.y, mo.sc, mo.sc, bmp, mo.col)
     end for
 end sub

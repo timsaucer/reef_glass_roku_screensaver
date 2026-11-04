@@ -18,6 +18,8 @@ The spec (hand traced on the grid image, 1080p screen px):
     "causticTop": 780,                  first row of the caustic band
     "piles": [[x0, y0, x1, y1], ...],   optional: boxes above the band whose rock and coral
                                         (whatever is not blue water) also hide far fish
+    "occlude": [[[x, y], ...], ...]     optional: polygons (the cave mouth) redrawn whole over
+                                        the light, so they stay dark
     "burrow": [x, y],                   optional: dig a burrow into the sand here
     "anemone": [[x, y], ...],           polygon around the anemone (tentacles and foot)
     "anemoneCenter": [x, y],            the oral disc; sway grows from here to the tips
@@ -149,8 +151,8 @@ def clam_shimmer(rgb, pts):
 
 
 def rocks_layer(rgb, spec, cfg):
-    """Write rocks_low.png: the reef's base rocks, drawn over the caustics and over the fish
-    behind the reef. It is everything in the caustic band that is not open sand, plus, for each
+    """Write rocks_low.png: the reef's base rocks, drawn over the caustics, the light rays and
+    the fish behind the reef. It is everything in the caustic band that is not open sand, plus, for each
     "pile" box above the band, the rock and coral standing out against the water there (keyed
     by how blue a pixel is). Returns the caustic band's top row and the sand mask."""
     top = spec["causticTop"]
@@ -168,6 +170,12 @@ def rocks_layer(rgb, spec, cfg):
         k = cv2.GaussianBlur(k, (0, 0), 0.8)
         rocks[y0:y1, x0:x1] = np.maximum(rocks[y0:y1, x0:x1], k)
         otop = min(otop, y0)
+    # "occlude" polygons (the cave mouth) are redrawn whole, so the light drawn before this
+    # layer never shows in them.
+    for poly in spec.get("occlude", []):
+        m = poly_mask(poly, 1.5)
+        rocks = np.maximum(rocks, m)
+        otop = min(otop, min(y for _, y in poly) - 4)
     # Where the coral layer (fg.png, drawn later over everything here) is solid, the rocks are
     # never seen: leave them out, which makes this file much smaller.
     if (IMAGES / "fg.png").exists():
