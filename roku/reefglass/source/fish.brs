@@ -21,14 +21,10 @@
 ' Fish keep a little apart (UpdateAvoid): a weak push away from fish close by, through
 ' height and depth only. Far fish stay above the back of the sand floor (roam.backFloor).
 '
-' Behaviors (reef.json "species"):
-'   roam  cruise between waypoints across the whole tank, often leaving the frame
-'   home  wander slowly around a home point (the anemone, a ledge, a coral head); "dart"
-'         adds short fast bursts, as damselfish do; "hover" is the chance of resting a while,
-'         "shuffle" makes those rests fidgety; "excursion" is the chance of a short trip off
-'         home and back; "follow" ("pair" or "school") makes the second and later fish
-'         follow the first (any behavior); "visit" (roam) is the chance of dropping by a
-'         spot (its own of "homes", else "visitAt", else the anemone) to hover
+' Behavior (reef.json "species"): every fish cruises between waypoints across the whole tank,
+' often leaving the frame. "follow" ("pair" or "school") makes the second and later fish
+' follow the first; "visit" is the chance of dropping by a spot (its own of "homes", else
+' "visitAt", else the anemone) to hover a while, and "shuffle" makes that hover fidgety.
 
 sub FishInit(s as object)
     cfg = s.cfg
@@ -207,33 +203,16 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         mul: 1.0, timer: 0.0, pause: 0.0
         size: 1.0
         cruise: sp.speed * RndRange(0.85, 1.15)
-        big: false, followers: invalid, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false, slot: invalid, wob: 0.0, visitAt: invalid
+        big: false, followers: invalid, turnDir: 0, blockT: 0.0, leader: invalid, visiting: false, slot: invalid, wob: 0.0, visitAt: invalid
         puff: 0.0, pmode: "none", ptime: 0.0, pcool: RndRange(40, 90)
         radius: 0.5 * sp.sideLen
     }
     if sp.radius <> invalid then f.radius = sp.radius
     if sp.big <> invalid then f.big = sp.big
-    fgZ = s.cfg.fgZ
-    if sp.behavior = "home"
-        if sp.home <> invalid
-            ' Clownfish: in front of their anemone (part of the reef layer).
-            a = s.cfg.anemone
-            f.hx = a.home[0] : f.hy = a.home[1]
-            f.z0 = a.z + 0.015 : f.z1 = 0.99
-        else
-            h = sp.homes[idx mod sp.homes.Count()]
-            f.hx = h[0] : f.hy = h[1]
-            f.z0 = h[2] - 0.04 : f.z1 = h[2] + 0.06
-            if f.z0 < fgZ + 0.02 then f.z0 = fgZ + 0.02
-            if f.z1 > 0.99 then f.z1 = 0.99
-            if sp.zr <> invalid then f.z0 = sp.zr[0] : f.z1 = sp.zr[1]
-        end if
-    else
-        r = s.cfg.roam
-        f.z0 = r.back[0] : f.z1 = r.front[1]
-        ' A roamer with "homes" visits its own one.
-        if sp.homes <> invalid then f.visitAt = sp.homes[idx mod sp.homes.Count()]
-    end if
+    r = s.cfg.roam
+    f.z0 = r.back[0] : f.z1 = r.front[1]
+    ' A fish with "homes" visits its own one.
+    if sp.homes <> invalid then f.visitAt = sp.homes[idx mod sp.homes.Count()]
     PickTarget(s, f)
     f.x = f.tx : f.y = f.ty : f.z = f.tz
     f.hd = Rnd(0) * 6.283
@@ -245,85 +224,55 @@ end function
 sub PickTarget(s as object, f as object)
     sp = f.sp
     f.mul = 1.0
-    if sp.behavior = "roam"
-        r = s.cfg.roam
-        ' Now and then a cruiser drops down to graze over the open sand.
-        area = r
-        low = (r.low <> invalid and Rnd(0) < r.low.chance)
-        if low then area = r.low
-        f.tx = RndRange(area.x0, area.x1)
-        if not low
-            ' Keep cruising the way it faces, at least 500 px on; past the far edge it turns
-            ' round out of sight. Only a fish already near that edge comes back the other way.
-            if Cos(f.hd) >= 0
-                if f.x < area.x1 - 150 then f.tx = RndRange(Min(f.x + 500, area.x1), area.x1) else f.tx = RndRange(area.x0, f.x - 500)
-            else
-                if f.x > area.x0 + 150 then f.tx = RndRange(area.x0, Max(f.x - 500, area.x0)) else f.tx = RndRange(f.x + 500, area.x1)
-            end if
+    r = s.cfg.roam
+    ' Now and then a cruiser drops down to graze over the open sand.
+    area = r
+    low = (r.low <> invalid and Rnd(0) < r.low.chance)
+    if low then area = r.low
+    f.tx = RndRange(area.x0, area.x1)
+    if not low
+        ' Keep cruising the way it faces, at least 500 px on; past the far edge it turns
+        ' round out of sight. Only a fish already near that edge comes back the other way.
+        if Cos(f.hd) >= 0
+            if f.x < area.x1 - 150 then f.tx = RndRange(Min(f.x + 500, area.x1), area.x1) else f.tx = RndRange(area.x0, f.x - 500)
+        else
+            if f.x > area.x0 + 150 then f.tx = RndRange(area.x0, Max(f.x - 500, area.x0)) else f.tx = RndRange(f.x + 500, area.x1)
         end if
-        f.ty = RndRange(area.y0, area.y1)
-        ' Depth: either well behind the reef or out in front of it, near the glass.
-        if Rnd(0) < r.frontChance then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[1])
-        ' Now and then a fish far back comes up close to the glass on a steep course, or (less
-        ' often: the tank should be busy in front of the reef) one at the glass heads off
-        ' steeply into the distance.
-        if not low and Rnd(0) < 0.3 and (f.z < 0.6 or Rnd(0) < 0.5)
-            dirx = 1
-            if Cos(f.hd) < 0 then dirx = -1
-            f.tx = f.x + dirx * RndRange(200, 400)
-            if f.z < 0.6 then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[0] + 0.3)
-        end if
-        ' Far back the sand floor rises (perspective): a fish behind the reef keeps its whole body
-        ' above where the floor meets the back (roam.backFloor), and grazing over the open sand
-        ' is always in front of the reef.
-        if low then f.tz = RndRange(r.front[0], r.front[1])
-        if f.tz < s.cfg.fgZ then f.ty = Min(f.ty, r.backFloor - BodyHalfHeight(s, f, f.tz) - 10)
-        f.timer = RndRange(20, 40)
-        ' Roamers with a "visit" chance (the clownfish) now and then drop by the anemone and
-        ' hover over it a while, when they are in front of the reef.
-        if sp.visit <> invalid
-            if f.visiting
-                f.visiting = false
-                f.pause = RndRange(3, 6)
-            else if f.z > s.cfg.fgZ and Rnd(0) < sp.visit
-                ' The spot: the species' "visitAt" [x, y, z], or the anemone.
-                v = f.visitAt
-                if v = invalid then v = sp.visitAt
-                if v = invalid then v = [s.cfg.anemone.home[0], s.cfg.anemone.home[1], 0.955]
-                f.tx = v[0] + RndRange(-60, 60)
-                f.ty = v[1] + RndRange(-30, 30)
-                f.tz = Clamp(v[2] + RndRange(-0.025, 0.025), s.cfg.fgZ + 0.02, 0.99)
-                f.visiting = true
-                f.timer = 25
-            end if
-        end if
-    else
-        ' Keep going roughly the way it faces; only when that would leave the home range does
-        ' it pick a point back inside (and so turn around). Fewer, decisive turns look natural.
+    end if
+    f.ty = RndRange(area.y0, area.y1)
+    ' Depth: either well behind the reef or out in front of it, near the glass.
+    if Rnd(0) < r.frontChance then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[1])
+    ' Now and then a fish far back comes up close to the glass on a steep course, or (less
+    ' often: the tank should be busy in front of the reef) one at the glass heads off
+    ' steeply into the distance.
+    if not low and Rnd(0) < 0.3 and (f.z < 0.6 or Rnd(0) < 0.5)
         dirx = 1
         if Cos(f.hd) < 0 then dirx = -1
-        f.tx = f.x + dirx * RndRange(0.4, 1.0) * sp.r
-        if Abs(f.tx - f.hx) > sp.r then f.tx = f.hx - dirx * RndRange(0.2, 0.9) * sp.r
-        f.ty = f.hy + (Rnd(0) * 2 - 1) * sp.r * 0.4
-        f.tz = RndRange(f.z0, f.z1)
-        f.timer = RndRange(8, 16)
-        if sp.dart <> invalid and Rnd(0) < sp.dart then f.mul = 2.6
-        if sp.hover <> invalid and Rnd(0) < sp.hover then f.pause = RndRange(2, 5)
-        if f.away = true
-            ' Back from an excursion: a pause out there, then a quick run home.
-            f.away = false
-            f.tx = f.hx + RndRange(-0.4, 0.4) * sp.r
-            f.ty = f.hy + RndRange(-0.2, 0.2) * sp.r
-            f.mul = 1.7
-            f.pause = RndRange(1, 2.5)
-        else if sp.excursion <> invalid and Rnd(0) < sp.excursion
-            ' A short excursion a little way off the anemone.
-            if Rnd(0) < 0.5 then dirx = -dirx
-            f.tx = f.hx + dirx * RndRange(sp.r + 60, sp.r + 160)
-            f.ty = f.hy + RndRange(-100, 30)
-            f.mul = 1.5
-            f.pause = 0
-            f.away = true
+        f.tx = f.x + dirx * RndRange(200, 400)
+        if f.z < 0.6 then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[0] + 0.3)
+    end if
+    ' Far back the sand floor rises (perspective): a fish behind the reef keeps its whole body
+    ' above where the floor meets the back (roam.backFloor), and grazing over the open sand
+    ' is always in front of the reef.
+    if low then f.tz = RndRange(r.front[0], r.front[1])
+    if f.tz < s.cfg.fgZ then f.ty = Min(f.ty, r.backFloor - BodyHalfHeight(s, f, f.tz) - 10)
+    f.timer = RndRange(20, 40)
+    ' Roamers with a "visit" chance (the clownfish) now and then drop by the anemone and
+    ' hover over it a while, when they are in front of the reef.
+    if sp.visit <> invalid
+        if f.visiting
+            f.visiting = false
+            f.pause = RndRange(3, 6)
+        else if f.z > s.cfg.fgZ and Rnd(0) < sp.visit
+            ' The spot: the species' "visitAt" [x, y, z], or the anemone.
+            v = f.visitAt
+            if v = invalid then v = sp.visitAt
+            if v = invalid then v = [s.cfg.anemone.home[0], s.cfg.anemone.home[1], 0.955]
+            f.tx = v[0] + RndRange(-60, 60)
+            f.ty = v[1] + RndRange(-30, 30)
+            f.tz = Clamp(v[2] + RndRange(-0.025, 0.025), s.cfg.fgZ + 0.02, 0.99)
+            f.visiting = true
+            f.timer = 25
         end if
     end if
 end sub
@@ -467,7 +416,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.phase = f.phase + dt * 6.283 * sp.beat * (0.5 + 0.5 * Clamp(effort, 0, 2))
 
         ' Cruisers well off-screen may jump to a new depth; nobody can see it.
-        if sp.behavior = "roam" and f.leader = invalid and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
+        if f.leader = invalid and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
             r = s.cfg.roam
             if Rnd(0) < r.frontChance or f.y + BodyHalfHeight(s, f, r.back[1]) > r.backFloor then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
             f.tz = f.z

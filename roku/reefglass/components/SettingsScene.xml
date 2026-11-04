@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Screensaver settings UI. Roku runs RunScreenSaverSettings in a context that only shows
+     SceneGraph screens (an roScreen there never appears). -->
+<component name="SettingsScene" extends="Scene">
+    <interface>
+        <!-- Lighting choice id (see LightingChoices in source/settings.brs). -->
+        <field id="lighting" type="string" onChange="onLightingSet" />
+        <field id="done" type="boolean" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="SettingsScene.brs" />
+    <children>
+        <Rectangle width="1920" height="1080" color="0x06182AFF" />
+        <Label translation="[160,110]" text="Reef Glass" font="font:LargeBoldSystemFont" color="0xE6F2F5FF" />
+        <Label translation="[160,190]" color="0x8FB3C2FF" font="font:SmallSystemFont"
+            text="Lighting in the tank. OK selects; Back exits." />
+        <RadioButtonList id="lighting" translation="[160,280]" itemSize="[1100,72]" itemSpacing="[0,8]"
+            vertFocusAnimationStyle="floatingFocus" />
+    </children>
+</component>

@@ -2,11 +2,15 @@
 ' and light drawn over it.
 '
 ' Entry points:
-'   RunScreenSaver  the system screensaver (there is no settings screen)
-'   Main            dev.brs; development builds only (see tools/sideload.sh)
+'   RunScreenSaver          the system screensaver
+'   RunScreenSaverSettings  its settings screen: the lighting (settings.brs)
+'   Main                    dev.brs; development builds only (see tools/sideload.sh)
 
 sub RunScreenSaver()
-    RunReef({}, false)
+    opts = {}
+    h = LightingHour(LoadLighting())
+    if h <> invalid then opts.hour = h
+    RunReef(opts, false)
 end sub
 
 ' Runs the tank until the system stops the screensaver (or Back is pressed in the dev app).

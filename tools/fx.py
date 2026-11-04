@@ -8,17 +8,45 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+from PIL import Image
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from caustics import caustic_band  # noqa: E402
 from imgio import save_rgba  # noqa: E402
-import placeholders as ph  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "roku/reefglass/images"
+
+
+def soft(name, size, inner=0.0):
+    """A soft white round spot."""
+    yy, xx = np.mgrid[0:size, 0:size]
+    r = np.hypot(xx - (size - 1) / 2, yy - (size - 1) / 2) / (size / 2)
+    a = np.clip(1 - (r - inner) / (1 - inner), 0, 1) ** 2
+    arr = np.zeros((size, size, 4), np.uint8)
+    arr[..., :3] = 255
+    arr[..., 3] = (a * 255).astype(np.uint8)
+    save_rgba(Image.fromarray(arr), OUT / name)
+
+
+def ray():
+    """A light shaft, widening downward. Drawn 1.1x tall from y = -40, it fades out by
+    y ~ 700: in open water, above the reef's base and the cave."""
+    w, h = 160, 680
+    x = np.linspace(-1, 1, w)[None, :]
+    y = np.linspace(0, 1, h)[:, None]
+    a = np.clip(1 - np.abs(x) / (0.4 + 0.6 * y), 0, 1) ** 1.5 * (1 - y) ** 1.3
+    arr = np.zeros((h, w, 4), np.uint8)
+    arr[..., :3] = (230, 245, 255)
+    arr[..., 3] = (a * 255).astype(np.uint8)
+    save_rgba(Image.fromarray(arr), OUT / "ray.png")
+
 cfg = json.loads((ROOT / "roku/reefglass/scenes/reef.json").read_text())
 h = 1080 - cfg["caustics"]["top"]
 for i in range(2):
-    save_rgba(caustic_band(1024, h, seed=11 + i, cells=26 + 6 * i), ph.OUT / f"caustic_{i}.png")
-ph.soft("mote.png", 8)
-ph.soft("puff.png", 24)
-ph.ray()
+    save_rgba(caustic_band(1024, h, seed=11 + i, cells=26 + 6 * i), OUT / f"caustic_{i}.png")
+soft("mote.png", 8)
+soft("puff.png", 24)
+ray()
 print(f"fx written (caustic band {h} px)")

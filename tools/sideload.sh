@@ -4,8 +4,8 @@
 # successful (or identical) install.
 #
 # --release packages it the way it ships: screensaver-only. The manifest loses "title" and
-# gains an explicit entry point and hidden=1, and source/dev.brs (Main) is left out.
-# Reef Glass has no settings screen, so there is no run_screensaver_settings entry.
+# gains the screensaver and settings entry points and hidden=1, and source/dev.brs (Main) is
+# left out. Roku only offers "Change screensaver settings" for a screensaver-only package.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source .env
@@ -19,7 +19,7 @@ if [[ "$release" == "--release" ]]; then
   rm -rf "$stage" && cp -R "$app" "$stage"
   rm -f "$stage/source/dev.brs"
   { grep -v '^title=' "$app/manifest"
-    printf 'run_screensaver=RunScreenSaver\nhidden=1\n'
+    printf 'run_screensaver=RunScreenSaver\nrun_screensaver_settings=RunScreenSaverSettings\nhidden=1\n'
   } > "$stage/manifest"
 fi
 (cd "$stage" && zip -qr -X "$zip" . -x '.*')

@@ -21,3 +21,4 @@ with [mflux](https://github.com/filipstrand/mflux) on 2026-11-03 and 2026-11-04;
 | `duster_crown.png`, `duster_tube.png` | generated | `duster.txt`, seed 1 | `tools/cutout.py --crop` (crown and tube cut separately) |
 | `caustic_*.png`, `ray.png`, `mote.png`, `puff.png` | procedural | — | `tools/fx.py`, `tools/caustics.py` |
 | `icon_*.jpg`, `store/poster-540x405.jpg` | device screenshot of the above | — | `tools/icons.py` (title in Georgia, rendered) |
+| `store/screenshots/*.jpg` | device screenshots of the above | — | — |

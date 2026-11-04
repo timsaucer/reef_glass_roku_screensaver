@@ -77,10 +77,8 @@
       "count": 2,
       "speed": 40,
       "beat": 3.0,
-      "behavior": "roam",
       "turn": 5.0,
       "near": 60,
-      "hover": 0.35,
       "views": {
         "deg": [
           -60,
@@ -2770,7 +2768,6 @@
       "count": 2,
       "speed": 75,
       "beat": 2.0,
-      "behavior": "roam",
       "big": true,
       "turn": 3.0,
       "near": 120,
@@ -5460,7 +5457,6 @@
       "count": 3,
       "speed": 65,
       "beat": 2.2,
-      "behavior": "roam",
       "big": true,
       "turn": 3.2,
       "near": 120,
@@ -8150,7 +8146,6 @@
       "count": 2,
       "speed": 32,
       "beat": 3.0,
-      "behavior": "roam",
       "homes": [
         [
           545,
@@ -8165,7 +8160,6 @@
       ],
       "turn": 5.0,
       "near": 60,
-      "hover": 0.35,
       "sideLen": 80,
       "ped": 0.237,
       "views": {
@@ -10854,10 +10848,8 @@
       "count": 6,
       "speed": 42,
       "beat": 3.5,
-      "behavior": "roam",
       "turn": 6.0,
       "near": 60,
-      "hover": 0.15,
       "sideLen": 74,
       "ped": 0.243,
       "views": {
@@ -13552,7 +13544,6 @@
       "count": 1,
       "speed": 24,
       "beat": 2.6,
-      "behavior": "roam",
       "turn": 3.0,
       "near": 60,
       "sideLen": 140,
@@ -16450,9 +16441,6 @@
     "far": 0.55
   },
   "anemone": {
-    "x": 496,
-    "y": 871,
-    "z": 0.92,
     "home": [
       505,
       650

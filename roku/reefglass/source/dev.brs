@@ -3,7 +3,11 @@
 ' (see tools/sideload.sh --release).
 '
 ' Launch parameters (ECP: POST :8060/launch/dev?hour=22&profile=1):
-'   hour=<h>       pin the tank clock to this hour (e.g. 21.5) instead of local time
+'   hour=<h>       pin the tank clock to this hour (e.g. 21.5); without it, the saved lighting
+'                  setting applies, as in the screensaver
+'   settings=1     open the settings screen instead
+'   lighting=<id>  save this lighting setting (auto, day, dusk, night) first, as the settings
+'                  screen would
 '   daycycle=<s>   sweep a full 24 h day every <s> seconds, to check the lighting ramps
 '   profile=1      print per-section frame timings every 5 s
 '   pose=<name>    draw that species through a U-turn, in 9 steps across the screen
@@ -15,7 +19,14 @@
 
 sub Main(args as dynamic)
     if type(args) <> "roAssociativeArray" then args = {}
+    if args.lighting <> invalid then SaveLighting(args.lighting)
+    if args.settings <> invalid
+        RunScreenSaverSettings()
+        return
+    end if
     opts = {}
+    h = LightingHour(LoadLighting())
+    if h <> invalid then opts.hour = h
     if args.hour <> invalid then opts.hour = Val(args.hour)
     if args.daycycle <> invalid then opts.daycycle = Val(args.daycycle)
     if args.profile <> invalid then opts.profile = true

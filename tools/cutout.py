@@ -1,7 +1,7 @@
 """Cut a generated animal out of its plain studio background and export Roku sprites.
 
 Usage:
-  .venv/bin/python tools/cutout.py <draft.png> <name> --width <px> [--fish] [--flip]
+  .venv/bin/python tools/cutout.py <draft.png> <name> --width <px> [--flip]
         [--crop x0,y0,x1,y1] [--squash 0.5] [--key 22,48]
 
 The drafts are generated on a plain bright green background (gen/prompts/*.txt). The key is
@@ -9,19 +9,13 @@ the color distance (CIE Lab) from the background, estimated from the image borde
 soft ramp between the two --key thresholds. Only the largest connected subject is kept, and
 green spill is removed from its edges.
 
---width   final sprite width in px: the size of the animal when nearest the glass (z = 1)
---fish    split into <name>_body.png and <name>_tail.png at the caudal peduncle (the narrowest
-          column in the rear part of the fish), and write the tail pivot and length into
-          roku/reefglass/scenes/reef.json (species <name>, or burrow.goby for the goby)
+--width   final sprite width in px (for a fish, the keyed photo that tools/fish3d.py and
+          tools/fishviews.py take, saved as images/<name>.png; move it to gen/meshes/)
 --flip    mirror first (sprites must face right)
 --squash  scale height by this factor (a starfish seen at a low angle on the sand)
---front   a head-on view of fish <name>: scaled to the height of <name>_body.png (times
-          --width/100, default 100 = same height) and saved as <name>_front.png; sets the
-          species' "front" flag in reef.json
 Writes gen/work/<name>_check.png (the cut over magenta) for review.
 """
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -34,20 +28,16 @@ from imgio import save_rgba  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES = ROOT / "roku/reefglass/images"
-SCENE = ROOT / "roku/reefglass/scenes/reef.json"
 WORK = ROOT / "gen/work"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("src")
 ap.add_argument("name")
 ap.add_argument("--width", type=int, required=True)
-ap.add_argument("--front", action="store_true")
-ap.add_argument("--fish", action="store_true")
 ap.add_argument("--flip", action="store_true")
 ap.add_argument("--crop")
 ap.add_argument("--squash", type=float, default=1.0)
 ap.add_argument("--key", default="14,32")
-ap.add_argument("--rear", default="0.08,0.42", help="fraction of the length (from the tail end) searched for the peduncle")
 a = ap.parse_args()
 
 rgb = np.array(Image.open(a.src).convert("RGB"))
@@ -93,12 +83,8 @@ rgba = rgba[y0:y1, x0:x1]
 
 # Downscale in premultiplied alpha so edges don't pick up dark or green fringes.
 im = Image.fromarray(rgba, "RGBA").convert("RGBa")
-if a.front:
-    h = round(Image.open(IMAGES / f"{a.name}_body.png").height * a.width / 100)
-    w = max(1, round(rgba.shape[1] * h / rgba.shape[0]))
-else:
-    w = a.width
-    h = max(1, round(rgba.shape[0] * w / rgba.shape[1] * a.squash))
+w = a.width
+h = max(1, round(rgba.shape[0] * w / rgba.shape[1] * a.squash))
 im = im.resize((w, h), Image.LANCZOS).convert("RGBA")
 WORK.mkdir(parents=True, exist_ok=True)
 
@@ -108,56 +94,6 @@ def check(img, path):
     Image.alpha_composite(bg, img).save(path)
 
 
-if a.front:
-    save_rgba(im, IMAGES / f"{a.name}_front.png")
-    check(im, WORK / f"{a.name}_front_check.png")
-    cfg = json.loads(SCENE.read_text())
-    cfg["species"][a.name]["front"] = True
-    SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
-    print(f"{a.name}_front.png {w}x{h}")
-    sys.exit()
-
-if not a.fish:
-    save_rgba(im, IMAGES / f"{a.name}.png")
-    check(im, WORK / f"{a.name}_check.png")
-    print(f"{a.name}.png {w}x{h}")
-    sys.exit()
-
-# Tail split: the caudal peduncle is the narrowest point of the rear part of the body.
-arr = np.array(im)
-al = arr[..., 3].astype(np.float32) / 255
-heights = cv2.GaussianBlur((al > 0.5).sum(axis=0).astype(np.float32)[None, :], (0, 0), 1.5)[0]
-r0, r1 = (float(v) for v in a.rear.split(","))
-lo, hi = int(w * r0), int(w * r1)
-c = lo + int(np.argmin(heights[lo:hi]))
-rows = np.nonzero(al[:, c] > 0.5)[0]
-py = int((rows.min() + rows.max()) / 2) if len(rows) else h // 2
-ov = max(2, w // 60)  # the tail runs a little under the body so no gap opens as it beats
-tail = im.crop((0, 0, c + ov, h))
-body = im.crop((c, 0, w, h))
-# Trim the tail sprite vertically to its content, keeping the pivot row.
-ta = np.array(tail)[..., 3]
-tr = np.nonzero(ta.max(axis=1) > 10)[0]
-t0, t1 = int(tr.min()), int(tr.max()) + 1
-# Center the tail sprite on the pivot row so its right-edge middle is the hinge.
-half = max(py - t0, t1 - py)
-tail_c = Image.new("RGBA", (tail.width, 2 * half), (0, 0, 0, 0))
-tail_c.paste(tail, (0, half - py))
-save_rgba(body, IMAGES / f"{a.name}_body.png")
-save_rgba(tail_c, IMAGES / f"{a.name}_tail.png")
-
-chk = im.copy()
-d = np.array(chk)
-d[:, c] = (0, 255, 255, 255)
-d[py, max(c - 6, 0):c + 7] = (255, 255, 255, 255)
-check(Image.fromarray(d), WORK / f"{a.name}_check.png")
-
-cfg = json.loads(SCENE.read_text())
-pivot = [ov, py]
-if a.name == "goby":
-    cfg["burrow"]["goby"] = {"pivot": pivot}
-else:
-    cfg["species"][a.name]["pivot"] = pivot
-    cfg["species"][a.name]["len"] = body.width
-SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
-print(f"{a.name}: body {body.width}x{h}, tail {tail_c.width}x{tail_c.height}, pivot {pivot}, peduncle col {c} of {w}")
+save_rgba(im, IMAGES / f"{a.name}.png")
+check(im, WORK / f"{a.name}_check.png")
+print(f"{a.name}.png {w}x{h}")
