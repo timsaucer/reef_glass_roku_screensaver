@@ -308,8 +308,14 @@ sub FishDraw(s as object, screen as object, f as object)
     spr = f.spr
     c = Cos(f.hd)
     ' Head-on weight: 1 while the fish faces the glass, 0 once it is well round to the side.
+    ' A "quarter" front sprite is a three-quarter view facing right: it covers more of the
+    ' turn, mirrored to the side the fish faces, and squeezes thin through exactly head-on
+    ' where it flips (tangs are thin discs, so that is what a real one looks like).
     wf = 0
-    if spr.front <> invalid and Sin(f.hd) > 0 then wf = SmoothStep(0.55, 0.18, Abs(c))
+    quarter = (f.sp.frontKind = "quarter")
+    if spr.front <> invalid and Sin(f.hd) > 0
+        if quarter then wf = SmoothStep(0.75, 0.45, Abs(c)) else wf = SmoothStep(0.55, 0.18, Abs(c))
+    end if
     if wf < 1
         ' Side view, its length shrinking with the heading.
         if c >= 0
@@ -321,11 +327,18 @@ sub FishDraw(s as object, screen as object, f as object)
         DrawFishSprite(screen, spr, f.x, f.y, sc, c, tailK, FadeCol(col, Clamp(2 - 2 * wf, 0, 1)))
     end if
     if wf > 0
-        ' Head-on view, rocking a little with the tail beat, the head leading the turn.
+        ' Front view, rocking a little with the tail beat, the head leading the turn.
         fb = spr.front
         fw = fb.GetWidth() : fh = fb.GetHeight()
-        sx = sc * (0.85 + 0.15 * Sin(f.hd)) * (1 + 0.04 * Sin(f.phase))
-        x = f.x + Cos(f.hd) * sc * spr.bw * 0.15 + 1.5 * sc * Sin(f.phase)
+        c = Cos(f.hd)
+        if quarter
+            k = 0.35 + 0.65 * SmoothStep(0, 0.35, Abs(c))
+        else
+            k = 0.85 + 0.15 * Sin(f.hd)
+        end if
+        sx = sc * k * (1 + 0.04 * Sin(f.phase))
+        if c < 0 then sx = -sx
+        x = f.x + c * sc * spr.bw * 0.15 + 1.5 * sc * Sin(f.phase)
         screen.DrawScaledObject(x - sx * fw / 2, f.y - sc * fh / 2, sx, sc, fb, FadeCol(col, Clamp(2 * wf, 0, 1)))
     end if
 end sub
@@ -336,7 +349,7 @@ sub DrawPoses(s as object, screen as object, name as string)
     for each g in s.fish
         if g.name = name
             screen.DrawRect(0, 380, 1920, 320, &h102030FF)
-            f = { spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0 }
+            f = { sp: g.sp, spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0 }
             for i = 0 to 8
                 f.hd = 3.14159265 * i / 8
                 f.x = 120 + i * 210

@@ -34,7 +34,9 @@
       "behavior": "roam",
       "big": true,
       "turn": 3.0,
-      "near": 120
+      "near": 120,
+      "front": true,
+      "frontKind": "quarter"
     },
     "yellowtang": {
       "count": 3,
@@ -48,7 +50,8 @@
       "behavior": "roam",
       "big": true,
       "turn": 3.2,
-      "near": 120
+      "near": 120,
+      "front": true
     },
     "gramma": {
       "count": 2,
