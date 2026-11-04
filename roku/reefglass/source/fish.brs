@@ -5,8 +5,9 @@
 ' backward. Screen x moves with cos(hd), depth z with sin(hd).
 '
 ' Turning: a fish turns on a circle about sp.radius px across at its swimming speed, so a
-' U-turn takes a few seconds and the fish keeps swimming through it. A U-turn always swings
-' the head toward the glass. Every heading is drawn from views rendered off the fish's 3D
+' U-turn takes a few seconds and the fish keeps swimming through it. A U-turn goes the shorter
+' way round unless that would show the fish from straight behind (then it swings past the
+' glass), and a fish never turns straight back after one. Every heading is drawn from views rendered off the fish's 3D
 ' model (LoadFishViews), so it turns with real thickness and shows its face head-on.
 '
 ' Sprites: a right-facing body plus a separate tail hinged at the body's tail pivot. The tail
@@ -16,6 +17,9 @@
 ' depth freely in open water, but never cross the reef layer (fgZ)
 ' while over coral (reef.json "coral" map): that would flip them from in front of the coral
 ' to behind it in a single frame. Over open water the same change is invisible.
+'
+' Fish keep a little apart (UpdateAvoid): a weak push away from fish close by, through
+' height and depth only. Far fish stay above the back of the sand floor (roam.backFloor).
 '
 ' Behaviors (reef.json "species"):
 '   roam  cruise between waypoints across the whole tank, often leaving the frame
@@ -70,6 +74,8 @@ sub FishInit(s as object)
             for i = 0 to sp.count - 1
                 f = NewFish(s, sp, spr, i)
                 f.name = name
+                ' id, and the id of its group's leader (its own when it leads or swims alone).
+                f.id = s.fish.Count() : f.lid = f.id
                 ' A pair or school ("follow"): the first leads, the rest follow it about, each at
                 ' its own place behind and beside it. A pair's follower (the male clownfish) is
                 ' smaller.
@@ -78,6 +84,7 @@ sub FishInit(s as object)
                         lead = f
                     else
                         f.leader = lead
+                        f.lid = lead.id
                         L = sp.sideLen
                         if sp.follow = "pair"
                             f.slot = [0.9 * L, 24]
@@ -87,6 +94,11 @@ sub FishInit(s as object)
                             f.size = RndRange(0.85, 1.05)
                         end if
                         f.wob = Rnd(0) * 6.283
+                        ' Start in formation: at its place by the leader, swimming alongside.
+                        f.x = lead.x - Cos(lead.hd) * f.slot[0]
+                        f.y = lead.y + f.slot[1]
+                        f.z = Clamp(lead.z - 0.01, f.z0, f.z1)
+                        f.hd = lead.hd : f.spd = lead.spd
                     end if
                 end if
                 s.fish.Push(f)
@@ -186,7 +198,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
     f = {
         sp: sp, spr: spr
         x: 0.0, y: 0.0, z: 0.5
-        hd: 0.0, spd: 0.0, vy: 0.0, turnRate: 0.0, bend: 0.0, pitch: 0.0
+        hd: 0.0, spd: 0.0, vy: 0.0, turnRate: 0.0, bend: 0.0, pitch: 0.0, avy: 0.0, avz: 0.0, turnCool: 0.0
         tx: 0.0, ty: 0.0, tz: 0.5
         face: 1.0, amp: 0.1
         phase: Rnd(0) * 6.283
@@ -259,6 +271,11 @@ sub PickTarget(s as object, f as object)
             f.tx = f.x + dirx * RndRange(200, 400)
             if f.z < 0.6 then f.tz = RndRange(r.front[0], r.front[1]) else f.tz = RndRange(r.back[0], r.back[0] + 0.3)
         end if
+        ' Far back the sand floor rises (perspective): a fish behind the reef keeps its whole body
+        ' above where the floor meets the back (roam.backFloor), and grazing over the open sand
+        ' is always in front of the reef.
+        if low then f.tz = RndRange(r.front[0], r.front[1])
+        if f.tz < s.cfg.fgZ then f.ty = Min(f.ty, r.backFloor - BodyHalfHeight(s, f, f.tz) - 10)
         f.timer = RndRange(20, 40)
         ' Roamers with a "visit" chance (the clownfish) now and then drop by the anemone and
         ' hover over it a while, when they are in front of the reef.
@@ -313,6 +330,7 @@ sub FishUpdate(s as object, t as float, dt as float)
     act = s.activity
     kz = s.kz
     kPi = 3.14159265
+    UpdateAvoid(s)
     for each f in s.fish
         sp = f.sp
         f.timer = f.timer - dt
@@ -335,6 +353,12 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' Steer toward the waypoint, through depth as well as across. A fish may angle up to
         ' ~70 degrees toward the glass, or ~55 degrees away from it (it is never seen from
         ' straight behind).
+        ' Hovering, a fish drifts on past a nearby spot rather than turning round for it.
+        if f.pause > 0 and Abs(dx) < 45
+            if Cos(f.hd) >= 0 then dx = 45 else dx = -45
+        end if
+        ' A weak push away from nearby fish, through depth only (never a turn round).
+        dzp = dzp + f.avz * 160
         if dzp > 0 then lim = 3.0 * Abs(dx) else lim = 1.4 * Abs(dx)
         if f.blockT > 0
             f.blockT = f.blockT - dt
@@ -354,7 +378,11 @@ sub FishUpdate(s as object, t as float, dt as float)
         w = w * (1 + 0.6 * ec * ec)
         ' A puffed-up fish barely turns.
         if f.puff > 0 then w = w * (1 - 0.85 * f.puff)
-        if f.turnDir = 0 and Abs(diff) > 1.6
+        ' Right after a U-turn a fish does not turn straight back: it keeps on a while first.
+        if f.turnCool > 0 then f.turnCool = f.turnCool - dt
+        if f.turnDir = 0 and Abs(diff) > 1.6 and f.turnCool > 0
+            diff = 0
+        else if f.turnDir = 0 and Abs(diff) > 1.6
             ' A big turn: the shorter way round, unless that swings the fish through straight
             ' away from the viewer (heading -90 degrees, never drawn); then the other way, past
             ' the glass. A side-on U-turn so always swings the head toward the glass.
@@ -366,7 +394,10 @@ sub FishUpdate(s as object, t as float, dt as float)
         end if
         if f.turnDir <> 0
             turn = f.turnDir * w * dt
-            if Abs(diff) < 0.3 then f.turnDir = 0
+            if Abs(diff) < 0.3
+                f.turnDir = 0
+                f.turnCool = RndRange(2.5, 4)
+            end if
         else
             turn = Clamp(diff, -w * dt, w * dt)
         end if
@@ -393,9 +424,11 @@ sub FishUpdate(s as object, t as float, dt as float)
             f.pause = f.pause - dt
             want = f.cruise * 0.12
             ' Hovering over home, some fish shuffle a little this way and that, turning in place.
-            if sp.shuffle = true and Rnd(0) < dt * 0.5
-                f.tx = f.x + RndRange(-35, 35)
-                f.ty = f.y + RndRange(-10, 10)
+            if sp.shuffle = true and Rnd(0) < dt * 0.3
+                d = RndRange(50, 90)
+                if Rnd(0) < 0.5 then d = -d
+                f.tx = f.x + d
+                f.ty = f.y + RndRange(-12, 12)
             end if
             if sp.shuffle = true then want = f.cruise * 0.22
         end if
@@ -411,7 +444,11 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' Over coral a fish holds its side of the reef, and swims side-on until clear of it.
         if CrossesCoral(s, f, zn) then f.blockT = 1.5 else f.z = zn
         ' Gentle climbs and dives toward the waypoint's height.
-        vyWant = Clamp((f.ty - f.y) * 0.6, -0.35 * f.spd, 0.35 * f.spd)
+        ' Behind the reef, the body stays above the back of the sand floor whatever the target
+        ' (a fish bound for the front sand descends once it is in front).
+        ty = f.ty
+        if f.z < s.cfg.fgZ then ty = Min(ty, s.cfg.roam.backFloor - BodyHalfHeight(s, f, f.z) - 10)
+        vyWant = Clamp((ty - f.y) * 0.6 + f.avy * 0.3 * f.spd, -0.35 * f.spd, 0.35 * f.spd)
         f.vy = f.vy + (vyWant - f.vy) * Clamp(1.5 * dt, 0, 1)
         f.y = f.y + f.vy * sc * dt
         ' Pitch (degrees, nose up positive): the climb or dive angle, eased so the fish tilts
@@ -430,11 +467,43 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' Cruisers well off-screen may jump to a new depth; nobody can see it.
         if sp.behavior = "roam" and f.leader = invalid and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
             r = s.cfg.roam
-            if Rnd(0) < r.frontChance then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
+            if Rnd(0) < r.frontChance or f.y + BodyHalfHeight(s, f, r.back[1]) > r.backFloor then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
             f.tz = f.z
         end if
     end for
     SortFish(s.fish)
+end sub
+
+' Fish keep a little apart: each sums a push away from others close by in 3D (depth as px of
+' travel), stronger the closer they are, left out between a pair or school (they keep their
+' own places). A third of the fish are updated each frame.
+sub UpdateAvoid(s as object)
+    fish = s.fish
+    n = fish.Count()
+    kz = s.kz
+    for i = s.frame mod 3 to n - 1 step 3
+        f = fish[i]
+        ax = 0.0 : ay = 0.0 : az = 0.0
+        rf = f.sp.sideLen * f.size
+        for each o in fish
+            if o.lid <> f.lid
+                R = 0.6 * (rf + o.sp.sideLen * o.size)
+                dx = f.x - o.x
+                if Abs(dx) < R
+                    dy = (f.y - o.y) * 1.5
+                    dzp = (f.z - o.z) / kz
+                    d2 = dx * dx + dy * dy + dzp * dzp
+                    if d2 < R * R
+                        d = Sqr(d2) + 1
+                        w = (1 - d / R)
+                        w = w * w / d
+                        ay = ay + dy * w : az = az + dzp * w
+                    end if
+                end if
+            end if
+        end for
+        f.avy = Clamp(ay, -1, 1) : f.avz = Clamp(az, -1, 1)
+    end for
 end sub
 
 ' Pufferfish: swells into a spiny ball when a big fish comes close (or, rarely, on its own),
@@ -513,7 +582,11 @@ function CrossesCoral(s as object, f as object, zn as float) as boolean
     for each w in s.zWalls
         if (f.z - w) * (zn - w) <= 0 and f.z <> zn then cross = true
     end for
-    if not cross or s.coral = invalid then return false
+    if not cross then return false
+    ' Low over the front sand, a fish cannot go behind the reef: there it would be below the
+    ' floor at the back.
+    if zn < f.z and f.y + BodyHalfHeight(s, f, zn) > s.cfg.roam.backFloor then return true
+    if s.coral = invalid then return false
     c = s.coral
     sc = f.size * DepthScale(s, f.z)
     hl = 0.5 * sc * f.spr.bw + 0.3 * sc * f.spr.tw
@@ -532,6 +605,11 @@ function CrossesCoral(s as object, f as object, zn as float) as boolean
         end if
     end for
     return false
+end function
+
+' Half the body's height on screen at depth z.
+function BodyHalfHeight(s as object, f as object, z as float) as float
+    return 0.45 * f.size * DepthScale(s, z) * f.spr.bh
 end function
 
 function Atan2(y as float, x as float) as float

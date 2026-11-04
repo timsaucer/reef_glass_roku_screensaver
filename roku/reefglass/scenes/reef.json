@@ -16437,7 +16437,8 @@
       0.89,
       0.99
     ],
-    "frontChance": 0.6
+    "frontChance": 0.6,
+    "backFloor": 740
   },
   "fgZ": 0.86,
   "haze": {
