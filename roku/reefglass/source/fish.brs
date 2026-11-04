@@ -84,6 +84,8 @@ sub FishInit(s as object)
                         lead = f
                     else
                         f.leader = lead
+                        if lead.followers = invalid then lead.followers = []
+                        lead.followers.Push(f)
                         f.lid = lead.id
                         L = sp.sideLen
                         if sp.follow = "pair"
@@ -205,7 +207,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         mul: 1.0, timer: 0.0, pause: 0.0
         size: 1.0
         cruise: sp.speed * RndRange(0.85, 1.15)
-        big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false, slot: invalid, wob: 0.0, visitAt: invalid
+        big: false, followers: invalid, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false, slot: invalid, wob: 0.0, visitAt: invalid
         puff: 0.0, pmode: "none", ptime: 0.0, pcool: RndRange(40, 90)
         radius: 0.5 * sp.sideLen
     }
@@ -340,7 +342,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' Move on to the next waypoint before arriving, so the path flows instead of stopping.
         ' Arrival counts across-the-screen distance only; depth is picked up on the way.
         if f.leader <> invalid
-            FollowLeader(f, t)
+            FollowLeader(s, f, t)
             dx = f.tx - f.x
             dzp = (f.tz - f.z) / kz
         else if (Abs(dx) < sp.near and f.pause <= 0) or f.timer < 0
@@ -469,6 +471,12 @@ sub FishUpdate(s as object, t as float, dt as float)
             r = s.cfg.roam
             if Rnd(0) < r.frontChance or f.y + BodyHalfHeight(s, f, r.back[1]) > r.backFloor then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
             f.tz = f.z
+            ' Its pair or school jumps with it.
+            if f.followers <> invalid
+                for each g in f.followers
+                    g.z = f.z : g.tz = f.z
+                end for
+            end if
         end if
     end for
     SortFish(s.fish)
@@ -553,7 +561,7 @@ end function
 ' place drifting slowly so a school never moves as a rigid block. It matches the leader's
 ' pace: faster when it falls back, nearly still when the leader hovers, and straight on (no
 ' fussing turns) when close.
-sub FollowLeader(f as object, t as float)
+sub FollowLeader(s as object, f as object, t as float)
     L = f.leader
     gap = f.slot[0] * (1 + 0.15 * Sin(t * 0.3 + f.wob))
     px = L.x - Cos(L.hd) * gap
@@ -561,7 +569,10 @@ sub FollowLeader(f as object, t as float)
     d = Sqr((px - f.x) * (px - f.x) + (py - f.y) * (py - f.y))
     if d > gap * 0.5 then f.tx = px else f.tx = f.x + Cos(f.hd) * 60
     f.ty = py
-    f.tz = Clamp(L.z - 0.01, f.z0, f.z1)
+    ' Just behind the leader in depth, but always on its side of the reef.
+    fgZ = s.cfg.fgZ
+    if L.z > fgZ then f.tz = Max(L.z - 0.01, fgZ + 0.015) else f.tz = Min(L.z - 0.01, fgZ - 0.015)
+    f.tz = Clamp(f.tz, f.z0, f.z1)
     f.mul = Clamp(d / gap, 0.3, 2.2)
     if L.pause > 0 and d < gap then f.mul = 0.15
     f.pause = 0
@@ -583,8 +594,20 @@ function CrossesCoral(s as object, f as object, zn as float) as boolean
         if (f.z - w) * (zn - w) <= 0 and f.z <> zn then cross = true
     end for
     if not cross then return false
-    ' Low over the front sand, a fish cannot go behind the reef: there it would be below the
-    ' floor at the back.
+    ' A leader crosses only where its whole pair or school can follow it straight across.
+    if CannotCross(s, f, zn) then return true
+    if f.followers <> invalid
+        for each g in f.followers
+            if CannotCross(s, g, zn) then return true
+        end for
+    end if
+    return false
+end function
+
+' True when fish f, where it is now, cannot cross the reef's depth toward zn: over coral (or
+' rock that hides far fish), or, heading back, low over the front sand (behind the reef it
+' would be below the floor at the back).
+function CannotCross(s as object, f as object, zn as float) as boolean
     if zn < f.z and f.y + BodyHalfHeight(s, f, zn) > s.cfg.roam.backFloor then return true
     if s.coral = invalid then return false
     c = s.coral
