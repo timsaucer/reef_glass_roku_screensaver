@@ -33,8 +33,6 @@ About the art: every image was made for Reef Glass. The tank and the animals wer
 | Terms of use URL | https://github.com/timsaucer/reef_glass_roku_screensaver/blob/main/TERMS.md |
 | Support | https://github.com/timsaucer/reef_glass_roku_screensaver/issues |
 
-The privacy, terms and support links only work once the repository is public.
-
 Suggested settings: monetization **Free**; category **Screensavers** (or Lifestyle, if the
 dashboard offers no screensaver category); rating: all ages; no deep linking.
 
