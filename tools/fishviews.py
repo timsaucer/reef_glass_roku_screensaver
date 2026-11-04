@@ -275,11 +275,12 @@ def export_views(r, name, S=1024):
         return out_views
 
     views = render_set(0.0, list(enumerate(ANGLES)), "")
-    # Bent sets for the turn (headings 0..90, where every U-turn passes): half and full bend,
+    # Bent sets for the turn (headings 0..90, where every U-turn passes): a third, two thirds
+    # and full bend,
     # tail swinging toward the near flank (p) or the far one (m).
     fwd = [(i, d) for i, d in enumerate(ANGLES) if d >= 0]
     sets = {}
-    for key, bf in (("p1", 0.5), ("p2", 1.0), ("m1", -0.5), ("m2", -1.0)):
+    for key, bf in (("p1", 1 / 3), ("p2", 2 / 3), ("p3", 1.0), ("m1", -1 / 3), ("m2", -2 / 3), ("m3", -1.0)):
         sets[key] = render_set(bf * math.radians(BEND_DEG), fwd, key)
     # Pack into atlas pages (shelf packing, tallest first): a few big palette PNGs instead of
     # a thousand small ones, each of which would carry its own palette and zip entry.
@@ -316,7 +317,7 @@ def export_views(r, name, S=1024):
     sets = {k2: fix(v2) for k2, v2 in sets.items()}
     sp["views"] = {"deg": ANGLES, "pages": len(pages), "v": views, "bend": {"deg": BEND_DEG, "from": fwd[0][0], "sets": sets}}
     SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
-    print(f"{name}: {len(views)} views + {len(fwd)}x4 bent, {len(pages)} atlas pages, side length {total}px, peduncle at {frac:.2f}")
+    print(f"{name}: {len(views)} views + {len(fwd)}x{len(sets)} bent, {len(pages)} atlas pages, side length {total}px, peduncle at {frac:.2f}")
 
 
 if __name__ == "__main__":

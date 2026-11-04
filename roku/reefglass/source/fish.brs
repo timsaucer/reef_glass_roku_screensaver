@@ -239,7 +239,10 @@ sub FishUpdate(s as object, t as float, dt as float)
             diff = diff + 2 * kPi
         end while
         ' Turn rate from a turning circle at swimming speed; a slow fish still turns.
-        w = Clamp(f.spd / f.radius, 0.7, sp.turn)
+        w = Clamp(f.spd / f.radius, 1.4, sp.turn)
+        ' Fish swing through the middle of a turn a little faster than they start and end it.
+        ec = 1 - Abs(Cos(f.hd))
+        w = w * (1 + 0.6 * ec * ec)
         if f.turnDir = 0 and Abs(diff) > 1.6
             ' A U-turn: swing the head toward the glass, whichever way that is.
             if Cos(f.hd) >= 0 then f.turnDir = 1 else f.turnDir = -1
@@ -257,8 +260,8 @@ sub FishUpdate(s as object, t as float, dt as float)
             f.turnRate = Abs(turn) / dt
             ' Body bend follows the turn: full at the slowest U-turn rate and above, signed by
             ' which way it turns.
-            bw = Clamp(turn / dt / 0.6, -1, 1)
-            f.bend = f.bend + (bw - f.bend) * Clamp(2.5 * dt, 0, 1)
+            bw = Clamp(turn / dt / 1.4, -1, 1)
+            f.bend = f.bend + (bw - f.bend) * Clamp(4 * dt, 0, 1)
         end if
 
         ' Speed: cruise, easing off only a little through turns; nearly still while hovering.
@@ -388,12 +391,13 @@ sub FishDraw(s as object, screen as object, f as object)
     end if
     away = (Sin(f.hd) < 0)
     v = spr.views[i]
-    ' Bent view while turning: half or full bend, tail toward the turn's inside. Mirroring
-    ' swaps the fish's flanks, so the set flips with it.
+    ' Bent view while turning: a third, two thirds or full bend, tail toward the turn's
+    ' inside. Mirroring swaps the fish's flanks, so the set flips with it.
     ab = Abs(f.bend)
-    if spr.bsets <> invalid and ab > 0.2 and i >= spr.bfrom
+    if spr.bsets <> invalid and ab > 0.17 and i >= spr.bfrom
         lv = "1"
-        if ab > 0.65 then lv = "2"
+        if ab > 0.5 then lv = "2"
+        if ab > 0.83 then lv = "3"
         if f.bend * mir > 0 then key = "p" + lv else key = "m" + lv
         v = spr.bsets[key][i - spr.bfrom]
     end if
