@@ -63,7 +63,7 @@ sub MorayUpdate(s as object, t as float, dt as float)
         ' nearly back inside.
         e.wait = e.wait - dt
         if e.wait <= 0
-            e.outT = RndRange(0.25, 1.0)
+            e.outT = RndRange(0.5, 1.0)
             e.wait = RndRange(6, 18)
         end if
         e.out = e.out + Clamp(e.outT - e.out, -dt / 6, dt / 6)

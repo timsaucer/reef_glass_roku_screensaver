@@ -78,7 +78,8 @@
       "r": 70,
       "turn": 5.0,
       "near": 20,
-      "hover": 0.35
+      "hover": 0.35,
+      "front": true
     },
     "damsel": {
       "count": 6,
@@ -101,7 +102,8 @@
       "dart": 0.2,
       "turn": 6.0,
       "near": 25,
-      "hover": 0.15
+      "hover": 0.15,
+      "front": true
     },
     "lion": {
       "count": 1,
@@ -297,7 +299,7 @@
     "x": 1408,
     "y": 838,
     "reach": 70,
-    "threat": 260,
+    "threat": 200,
     "gape": 7
   }
 }
