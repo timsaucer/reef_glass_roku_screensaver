@@ -12,7 +12,7 @@ Status: **photoreal art in place** for the plate and all animals.
 | Fish | clownfish pair living in an anemone, blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head, a lionfish drifting slowly in open water |
 | Critters | feather duster worms that snap shut when a fish swims close and slowly unfurl, a giant clam, a starfish crawling across the sand |
 | Moray eel | a snowflake moray lives in the cave under the right-hand rock: it breathes with a slow gape, slides out to look around, and pulls back into the dark when a big fish swims close |
-| Swimming | fish turn in smooth arcs at swimming speed, swinging round to face the glass (a head-on view) on the way; they move between the back of the tank and the glass, but only over open water, so they never pop from behind the coral to in front of it |
+| Swimming | fish swim at any angle between side-on and nearly head-on, drawn in perspective (the nearer end larger), so they visibly come toward the glass and head off into the distance; U-turns are smooth arcs that swing round to face the viewer, where a head-on view fades in; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
 | Light | caustics rippling over the sand, shafts of light from the surface, drifting marine snow |
 | Time of day | follows the Roku's clock: daylight, a blue dusk and dawn, dim moonlight at night (fish slow down, caustics and light shafts fade out) |
 
@@ -56,7 +56,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 `.env` (gitignored) holds `ROKU_IP`, `ROKU_DEV_PASSWORD`, `ROKU_DEV_ID`, `ROKU_SIGN_PASSWORD`.
 
 - `tools/run.sh [secs] [query]`: sideload the dev build, launch it, capture the console, screenshot to `build/shot.jpg`
-- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second
+- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second, `pose=<species>` draw that fish through a U-turn in 9 steps (`fine=1`: 45 to 90 degrees only)
 - `tools/sideload.sh roku/reefglass [--release]`, `tools/console.py <secs> [--launch]`, `tools/screenshot.sh out.jpg`
 - `tools/placeholders.py`: regenerate placeholder art (overwrites real art; for bootstrapping only)
 
@@ -66,7 +66,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
    one at a time.
 2. Plate: crop to 16:9, `tools/plate.py grid` to read coordinates, trace `gen/plate_spec.json`,
    `tools/plate.py build`; `tools/depth.py` + `tools/layers.py --near 0.08 --matte` for the reef
-   layer (quantize into `fg.png`); `tools/fx.py` for the caustic band height.
+   layer (quantize into `fg.png`, alpha remapped `clip((a - 0.05) / 0.5)` so the coral fully hides fish behind it); `tools/fx.py` for the caustic band height.
    `tools/coralmask.py` then writes the coarse coral map (`coral` in reef.json) from `fg.png`.
 3. Animals: drafts on a plain green background; `tools/cutout.py <draft> <name> --width <px>
    [--fish]` keys, despills, splits the tail and writes pivots into `reef.json`. Head-on views:

@@ -35,7 +35,7 @@
       "big": true,
       "turn": 3.0,
       "near": 120,
-      "front": false
+      "front": true
     },
     "yellowtang": {
       "count": 3,

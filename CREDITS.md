@@ -15,7 +15,7 @@ with [mflux](https://github.com/filipstrand/mflux) on 2026-11-03 and 2026-11-04;
 | `damsel_body/tail.png` | generated | `damsel.txt`, seed 1 | `tools/cutout.py --fish` |
 | `gramma_body/tail.png` | generated | `gramma.txt`, seed 2 | `tools/cutout.py --fish` |
 | `lion_body/tail.png` | generated | `lion.txt`, seed 1 | `tools/cutout.py --fish --rear 0.18,0.3` |
-| `<fish>_front.png` | generated | `<fish>_front.txt`, seed 1 | `tools/cutout.py --front` |
+| `<fish>_front.png` | generated | `<fish>_front.txt`, seed 1 (blue tang: seed 2) | `tools/cutout.py --front` |
 | `moray.png`, `moray_jaw.png` | generated | `moray.txt`, seed 1 | `tools/cutout.py --crop 150,120,600,576`, then `tools/moray.py` (jaw split, tilt, fade) |
 | `cave_shade.png` | from `bg.jpg` | — | `tools/moray.py` |
 | `starfish.png` | generated | `starfish.txt`, seed 1 | `tools/cutout.py --squash 0.42` |
