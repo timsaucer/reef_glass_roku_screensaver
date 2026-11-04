@@ -79,7 +79,7 @@ function LoadFishSprite(name as string, pivot as object) as object
         body: body, tail: tail
         bw: body.GetWidth(), bh: body.GetHeight(), tw: tail.GetWidth(), th: tail.GetHeight()
         px: pivot[0], py: pivot[1], strips: [], su: []
-        thick: 0.3
+        thick: 0.35
     }
     ' Vertical strips of the body, drawn each at its own depth when the fish swims at an angle
     ' to the glass. Each overlaps the next by a pixel so no seams open.
@@ -403,18 +403,22 @@ sub DrawFishBody(s as object, screen as object, spr as object, x as float, y as 
         end while
         order[j] = i
     end for
-    ' A slice seen nearly edge-on still shows the body's thickness: its width never drops
-    ' below th of its side-on width, centered on where it falls.
-    tk = spr.thick * 1.0
+    ' Seen nearly edge-on the body still has its thickness (spr.thick, a fraction of its
+    ' height): if the whole fish projects narrower than that, stretch it out about its middle.
+    lo = sxs[0] : hi = sxs[0]
+    for k = 1 to n
+        if sxs[k] < lo then lo = sxs[k]
+        if sxs[k] > hi then hi = sxs[k]
+    end for
+    T = spr.thick * spr.bh * g * (0.4 + 0.6 * z)
+    st = 1.0
+    if hi - lo < T then st = T / Max(hi - lo, 0.5)
+    xm = 0.5 * (lo + hi)
     for each i in order
         sm = g * (0.4 + 0.6 * 0.5 * (zs[i] + zs[i + 1]))
         w = su[i + 1] - su[i]
-        x0 = sxs[i] : sx = (sxs[i + 1] - x0) / w
-        if Abs(sx) < tk * sm
-            xm = x0 + 0.5 * sx * w
-            if sx >= 0 then sx = tk * sm else sx = -tk * sm
-            x0 = xm - 0.5 * sx * w
-        end if
+        x0 = xm + (sxs[i] - xm) * st
+        sx = (sxs[i + 1] - sxs[i]) * st / w
         screen.DrawScaledObject(x0, y - sm * spr.bh / 2, sx, sm, spr.strips[i], col)
     end for
 end sub

@@ -20,7 +20,7 @@
       "turn": 5.0,
       "near": 20,
       "hover": 0.2,
-      "thick": 0.35
+      "thick": 0.65
     },
     "bluetang": {
       "count": 2,
@@ -35,7 +35,7 @@
       "big": true,
       "turn": 3.0,
       "near": 120,
-      "thick": 0.2
+      "thick": 0.32
     },
     "yellowtang": {
       "count": 3,
@@ -50,7 +50,7 @@
       "big": true,
       "turn": 3.2,
       "near": 120,
-      "thick": 0.2
+      "thick": 0.32
     },
     "gramma": {
       "count": 2,
@@ -78,7 +78,7 @@
       "turn": 5.0,
       "near": 20,
       "hover": 0.35,
-      "thick": 0.3
+      "thick": 0.5
     },
     "damsel": {
       "count": 6,
@@ -102,35 +102,7 @@
       "turn": 6.0,
       "near": 25,
       "hover": 0.15,
-      "thick": 0.3
-    },
-    "lion": {
-      "count": 1,
-      "len": 154,
-      "pivot": [
-        3,
-        79
-      ],
-      "speed": 14,
-      "beat": 1.4,
-      "behavior": "home",
-      "homes": [
-        [
-          900,
-          430,
-          0.75
-        ]
-      ],
-      "r": 320,
-      "zr": [
-        0.55,
-        0.97
-      ],
-      "turn": 1.2,
-      "near": 40,
-      "hover": 0.45,
-      "radius": 70,
-      "thick": 0.5
+      "thick": 0.55
     }
   },
   "roam": {
@@ -196,7 +168,7 @@
     "x0": 1150,
     "x1": 1500,
     "y": 1040,
-    "speed": 2.5
+    "speed": 0.8
   },
   "motes": {
     "count": 70

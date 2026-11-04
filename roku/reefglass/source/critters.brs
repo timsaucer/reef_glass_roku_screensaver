@@ -31,7 +31,8 @@ end sub
 sub CrittersUpdate(s as object, t as float, dt as float)
     MorayUpdate(s, t, dt)
     UpdateDusters(s, t, dt)
-    ' Starfish: a slow crawl back and forth along the sand, resting at each end.
+    ' Starfish: a very slow glide back and forth along the sand on its tube feet (real sea
+    ' stars cover a few cm a minute), resting at each end.
     sf = s.cfg.starfish
     st = s.star
     if st.rest > 0
@@ -54,8 +55,10 @@ sub CrittersDraw(s as object, screen as object, t as float)
     screen.DrawScaledObject(st.x - sw * 0.55, sy - shh * 0.2, sw * 1.1 / 24, shh * 0.9 / 24, s.puff, &h1A140F00 + 90)
     screen.DrawObject(st.x - sw / 2, sy - shh / 2, s.starBmp)
 
-    DrawDusters(s, screen, t)
+    ' The moray's cave shade covers rock around the cave; the dusters growing on that rock go
+    ' over it.
     MorayDraw(s, screen, t)
+    DrawDusters(s, screen, t)
 end sub
 
 ' The anemone sways through a loop of frames, crossfading between neighbors.
