@@ -76,7 +76,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
    `ext/venv/bin/python tools/fish3d.py gen/meshes/<name>_full.png gen/meshes/<name>.ply`, then
    `ext/venv/bin/python tools/fishviews.py views gen/meshes/<name>.ply <name> --photo
    gen/meshes/<name>_full.png [--fat 1.25]` renders the turn views (the photo is projected onto
-   both flanks; `--fat` thickens thin fish a little; `--len`/`--ped` for a new species; `--ball 1.4`
+   both flanks; `--fat` thickens thin fish a little; `--under 0.5` shades the underside as if lit from above (the damselfish, whose photo has a pale belly); `--len`/`--ped` for a new species; `--ball 1.4`
    exports the pufferfish's inflated form). `fishviews.py strip` previews a turn. The moray: `tools/moray.py`.
 5. `tools/icons.py <screenshot>` for icons and the store poster.
 

@@ -61,6 +61,7 @@ in vec3 mn;
 uniform sampler2D photo;
 uniform vec4 box;  // mesh y0, y1, z0, z1 that the photo's fish spans
 uniform float usePhoto;
+uniform float under;
 out vec4 frag;
 void main() {
     vec3 n = normalize(vn);
@@ -73,6 +74,11 @@ void main() {
     // Mostly the photo's own shading (baked into the colors); a little light from above
     // the camera keeps the thickness readable when the fish faces the viewer.
     float l = 0.82 + 0.18 * max(dot(n, normalize(vec3(0.0, 0.6, 0.8))), 0.0);
+    // Light from above: the fish's underside (surface facing down, mesh -z) and the lowest
+    // part of its body are in its own shadow, darkest at the bottom edge.
+    float hgt = (mpos.z - box.z) / (box.w - box.z);
+    float sh = max(smoothstep(0.0, 0.85, -normalize(mn).z), 1.0 - smoothstep(0.05, 0.4, hgt));
+    l *= 1.0 - under * sh;
     frag = vec4(base * l, 1.0);
 }
 """
@@ -102,6 +108,7 @@ class Renderer:
         self.set_bend(0.0)
         self.fbo = self.ctx.simple_framebuffer((size, size), components=4)
         self.prog["usePhoto"].value = 0.0
+        self.prog["under"].value = 0.0
 
     def set_photo(self, path):
         """The keyed side photo (RGBA, head right): its fish's bounding box is matched to the
@@ -351,8 +358,10 @@ if __name__ == "__main__":
     ap.add_argument("--ball", type=float, help="views: export as the species' inflated form, this times its length")
     ap.add_argument("--len", type=int, help="views: side length in px (first export of a new species)")
     ap.add_argument("--ped", type=float, help="views: tail joint, fraction of the length from the tail end")
+    ap.add_argument("--under", type=float, default=0.0, help="darken the underside (0..1), lit from above")
     a = ap.parse_args()
     r = Renderer(a.mesh, a.size, a.fat)
+    r.prog["under"].value = a.under
     if a.photo:
         r.set_photo(a.photo)
     if a.cmd == "upright":
