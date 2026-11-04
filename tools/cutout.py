@@ -42,7 +42,7 @@ ap.add_argument("--fish", action="store_true")
 ap.add_argument("--flip", action="store_true")
 ap.add_argument("--crop")
 ap.add_argument("--squash", type=float, default=1.0)
-ap.add_argument("--key", default="22,48")
+ap.add_argument("--key", default="14,32")
 ap.add_argument("--rear", default="0.08,0.42", help="fraction of the length (from the tail end) searched for the peduncle")
 a = ap.parse_args()
 
@@ -53,10 +53,10 @@ if a.crop:
 if a.flip:
     rgb = rgb[:, ::-1].copy()
 
-lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB).astype(np.float32)
+lab = cv2.cvtColor(rgb.astype(np.float32) / 255, cv2.COLOR_RGB2LAB)  # true CIE Lab
 border = np.concatenate([lab[:8].reshape(-1, 3), lab[-8:].reshape(-1, 3), lab[:, :8].reshape(-1, 3), lab[:, -8:].reshape(-1, 3)])
 bgc = np.median(border, axis=0)
-dist = np.linalg.norm(lab - bgc, axis=2) * (100 / 255)  # OpenCV 8-bit Lab is scaled to 0..255
+dist = np.linalg.norm(lab - bgc, axis=2)
 k0, k1 = (float(v) for v in a.key.split(","))
 alpha = np.clip((dist - k0) / (k1 - k0), 0, 1)
 
@@ -70,12 +70,15 @@ if n > 1:
 inside = cv2.morphologyEx((alpha > 0.5).astype(np.uint8), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
 alpha = np.maximum(alpha, inside.astype(np.float32) * (cv2.erode(inside, np.ones((5, 5), np.uint8)) > 0))
 
-# Despill: near the edge, green may not exceed the larger of red and blue.
+# Despill: green may not exceed the larger of red and blue (none of the animals are green).
+# Where a pixel was green because the background showed through (translucent fins), it also
+# loses alpha in proportion, so the fin stays see-through over the reef.
 f = rgb.astype(np.float32)
-edge = cv2.dilate((alpha < 0.99).astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+bgrgb = np.median(np.concatenate([rgb[:8].reshape(-1, 3), rgb[-8:].reshape(-1, 3)]), axis=0).astype(np.float32)
 cap = np.maximum(f[..., 0], f[..., 2])
-g = np.where(edge, np.minimum(f[..., 1], cap + 8), f[..., 1])
-f[..., 1] = g
+spill = np.clip((f[..., 1] - cap) / max(1.0, bgrgb[1] - max(bgrgb[0], bgrgb[2])), 0, 1)
+f[..., 1] = np.minimum(f[..., 1], cap + 4)
+alpha = alpha * (1 - 0.75 * spill)
 rgba = np.dstack([f, alpha * 255]).clip(0, 255).astype(np.uint8)
 
 ys, xs = np.nonzero(alpha > 0.05)
