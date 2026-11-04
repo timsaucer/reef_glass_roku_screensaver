@@ -46,6 +46,9 @@ MOUTH = [(0, 114), (60, 140), (120, 162), (176, 184)]  # the jaw's top edge, for
 CAVE = [(1402, 876), (1404, 806), (1428, 782), (1470, 772), (1530, 771), (1566, 778), (1604, 790), (1606, 876)]
 SHADE_BOX = (1380, 750, 1660, 900)
 WALL = (1555, 26)  # right of this x, only pixels darker than this luminance are cave interior
+# Shadow inside the cave: from DEEP[0] the interior darkens over the eel, reaching DEEP[2]
+# opacity at DEEP[1], so the body runs back into the dark before it meets the wall.
+DEEP = (1470, 1575, 0.85)
 
 
 def main():
@@ -128,7 +131,9 @@ def main():
     inside = inside * np.where(xx > WALL[0], dark, 1.0)
     inside = cv2.morphologyEx(inside, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     inside = cv2.GaussianBlur(inside, (0, 0), 1.0)
-    alpha = 1 - inside
+    deep = np.clip((xx - DEEP[0]) / (DEEP[1] - DEEP[0]), 0, 1)
+    deep = DEEP[2] * deep * deep * (3 - 2 * deep)
+    alpha = (1 - inside) + inside * deep
     shade = np.dstack([crop, alpha * 255]).clip(0, 255).astype(np.uint8)
     save_rgba(Image.fromarray(shade, "RGBA"), IMAGES / "cave_shade.png")
 
@@ -136,7 +141,7 @@ def main():
     m = cfg.get("moray", {})
     m.update({
         "jaw": [jx0, jy0], "jawHinge": [round(hx, 1), round(hy, 1)],
-        "shade": [sx0, sy0],
+        "shade": [sx0, sy0], "clip": sx1,
     })
     m.setdefault("x", 1440)
     m.setdefault("y", 830)

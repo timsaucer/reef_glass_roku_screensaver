@@ -12,7 +12,7 @@ Status: **photoreal art in place** for the plate and all animals.
 | Fish | clownfish pair living in an anemone, blue tangs and yellow tangs cruising the whole tank, royal grammas under ledges, a loose group of blue damselfish around a coral head, a lionfish drifting slowly in open water |
 | Critters | feather duster worms that snap shut when a fish swims close and slowly unfurl, a giant clam, a starfish crawling across the sand |
 | Moray eel | a snowflake moray lives in the cave under the right-hand rock: it breathes with a slow gape, slides out to look around, and pulls back into the dark when a big fish swims close |
-| Swimming | fish swim at any angle between side-on and nearly head-on, drawn in perspective (the nearer end larger), so they visibly come toward the glass and head off into the distance; U-turns are smooth arcs that swing round to face the viewer, where a head-on view fades in; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
+| Swimming | fish swim at any angle between side-on and nearly head-on, drawn in perspective (the nearer end larger), so they visibly come toward the glass and head off into the distance; through a turn the body bends, head first, so it curves round smoothly instead of flipping; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
 | Light | caustics rippling over the sand, shafts of light from the surface, drifting marine snow |
 | Time of day | follows the Roku's clock: daylight, a blue dusk and dawn, dim moonlight at night (fish slow down, caustics and light shafts fade out) |
 
@@ -44,7 +44,6 @@ Final art must keep these conventions so it drops in without code changes. Posit
 | `rocks_low.png` | plate's non-sand pixels from `caustics.top` down | drawn over the caustics so light lands on sand only |
 | `<fish>_body.png` | fish facing right, tail cut off | `pivot` in reef.json: where the tail joins, body pixels |
 | `<fish>_tail.png` | tail fin alone | its right-edge middle attaches at the pivot |
-| `<fish>_front.png` | the same fish head-on, as tall as the body sprite | optional (`front: true`); shown mid-turn |
 | `anemone_<n>.png` | anemone sway loop, n frames | bottom center at `anemone.x,y` |
 | `duster_crown.png`, `duster_tube.png` | feather duster fan; tube | crown's bottom center sits on the tube mouth |
 | `starfish.png` | starfish, seen at a low angle | centered |
@@ -56,7 +55,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 `.env` (gitignored) holds `ROKU_IP`, `ROKU_DEV_PASSWORD`, `ROKU_DEV_ID`, `ROKU_SIGN_PASSWORD`.
 
 - `tools/run.sh [secs] [query]`: sideload the dev build, launch it, capture the console, screenshot to `build/shot.jpg`
-- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second, `pose=<species>` draw that fish through a U-turn in 9 steps (`fine=1`: 45 to 90 degrees only)
+- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second, `pose=<species>` draw that fish bent through a U-turn in 9 steps (`fine=1`: 45 to 90 degrees only)
 - `tools/sideload.sh roku/reefglass [--release]`, `tools/console.py <secs> [--launch]`, `tools/screenshot.sh out.jpg`
 - `tools/placeholders.py`: regenerate placeholder art (overwrites real art; for bootstrapping only)
 
@@ -69,9 +68,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
    layer (quantize into `fg.png`, alpha remapped `clip((a - 0.05) / 0.5)` so the coral fully hides fish behind it); `tools/fx.py` for the caustic band height.
    `tools/coralmask.py` then writes the coarse coral map (`coral` in reef.json) from `fg.png`.
 3. Animals: drafts on a plain green background; `tools/cutout.py <draft> <name> --width <px>
-   [--fish]` keys, despills, splits the tail and writes pivots into `reef.json`. Head-on views:
-   `tools/cutout.py <draft> <name> --front --width 100` (height matched to the body sprite).
-   The moray: `tools/moray.py`.
+   [--fish]` keys, despills, splits the tail and writes pivots into `reef.json`. The moray: `tools/moray.py`.
 4. `tools/icons.py <screenshot>` for icons and the store poster.
 
 ## License

@@ -20,7 +20,7 @@
       "turn": 5.0,
       "near": 20,
       "hover": 0.2,
-      "front": true
+      "thick": 0.35
     },
     "bluetang": {
       "count": 2,
@@ -35,7 +35,7 @@
       "big": true,
       "turn": 3.0,
       "near": 120,
-      "front": true
+      "thick": 0.2
     },
     "yellowtang": {
       "count": 3,
@@ -50,7 +50,7 @@
       "big": true,
       "turn": 3.2,
       "near": 120,
-      "front": true
+      "thick": 0.2
     },
     "gramma": {
       "count": 2,
@@ -78,7 +78,7 @@
       "turn": 5.0,
       "near": 20,
       "hover": 0.35,
-      "front": true
+      "thick": 0.3
     },
     "damsel": {
       "count": 6,
@@ -102,7 +102,7 @@
       "turn": 6.0,
       "near": 25,
       "hover": 0.15,
-      "front": true
+      "thick": 0.3
     },
     "lion": {
       "count": 1,
@@ -130,7 +130,7 @@
       "near": 40,
       "hover": 0.45,
       "radius": 70,
-      "front": true
+      "thick": 0.5
     }
   },
   "roam": {
@@ -298,7 +298,8 @@
     "x": 1440,
     "y": 830,
     "reach": 160,
-    "threat": 200,
-    "gape": 6
+    "threat": 170,
+    "gape": 6,
+    "clip": 1660
   }
 }

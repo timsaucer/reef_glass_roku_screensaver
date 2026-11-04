@@ -8,8 +8,9 @@
 '
 ' Sprites: moray.png (head and front body facing left, without the lower jaw) and
 ' moray_jaw.png (placed at "jaw" in moray.png px), rotated about "jawHinge" to gape.
-' cave_shade.png is the plate's rock around the cave opening, drawn over the eel so its body
-' disappears behind the real rock edge.
+' cave_shade.png is the plate's rock around the cave opening plus the cave's shadow deepening
+' toward the back, drawn over the eel so its body fades into the dark and disappears behind the
+' real rock edge. The body is clipped at the shade's right edge ("clip").
 
 sub MorayInit(s as object)
     c = s.cfg.moray
@@ -23,6 +24,7 @@ sub MorayInit(s as object)
         bph: 0.0, bper: 5.0, threatNow: false
     }
     ' The jaw is drawn rotated about its hinge: a region whose origin is moved onto the hinge.
+    s.moray.bw = s.moray.body.GetWidth() : s.moray.vis = -1
     jb = s.moray.jaw
     s.moray.jawRegion = CreateObject("roRegion", jb, 0, 0, jb.GetWidth(), jb.GetHeight())
     s.moray.jawRegion.SetPretranslation(c.jaw[0] - c.jawHinge[0], c.jaw[1] - c.jawHinge[1])
@@ -96,7 +98,17 @@ sub MorayDraw(s as object, screen as object, t as float)
     if u < 1 then g = Sin(3.14159 * u) * Sin(3.14159 * u)
     jh = c.jawHinge
     screen.DrawRotatedObject(x + jh[0], y0 + jh[1], g * c.gape, e.jawRegion, col)
-    screen.DrawObject(x, y0, e.body, col)
+    ' Clip the body where the cave shade ends, so the part behind the wall never shows past
+    ' the rock it hides behind.
+    vis = c.clip - x
+    if vis > 0
+        if vis > e.bw then vis = e.bw
+        if vis <> e.vis
+            e.bodyRegion = CreateObject("roRegion", e.body, 0, 0, vis, e.body.GetHeight())
+            e.vis = vis
+        end if
+        screen.DrawObject(x, y0, e.bodyRegion, col)
+    end if
     sh = c.shade
     screen.DrawObject(sh[0], sh[1], e.shade)
 end sub
