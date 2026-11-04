@@ -12,11 +12,14 @@
         2,
         40
       ],
-      "speed": 55,
-      "beat": 4.0,
+      "speed": 28,
+      "beat": 3.0,
       "behavior": "home",
       "home": "anemone",
-      "r": 70
+      "r": 110,
+      "turn": 5.0,
+      "near": 20,
+      "hover": 0.2
     },
     "bluetang": {
       "count": 2,
@@ -25,10 +28,12 @@
         3,
         41
       ],
-      "speed": 95,
-      "beat": 2.6,
+      "speed": 75,
+      "beat": 2.0,
       "behavior": "roam",
-      "big": true
+      "big": true,
+      "turn": 3.0,
+      "near": 120
     },
     "yellowtang": {
       "count": 3,
@@ -37,10 +42,12 @@
         2,
         49
       ],
-      "speed": 85,
-      "beat": 2.8,
+      "speed": 65,
+      "beat": 2.2,
       "behavior": "roam",
-      "big": true
+      "big": true,
+      "turn": 3.2,
+      "near": 120
     },
     "gramma": {
       "count": 2,
@@ -49,8 +56,8 @@
         2,
         12
       ],
-      "speed": 40,
-      "beat": 4.5,
+      "speed": 22,
+      "beat": 3.0,
       "behavior": "home",
       "homes": [
         [
@@ -64,7 +71,10 @@
           0.9
         ]
       ],
-      "r": 70
+      "r": 70,
+      "turn": 5.0,
+      "near": 20,
+      "hover": 0.35
     },
     "damsel": {
       "count": 6,
@@ -73,8 +83,8 @@
         2,
         14
       ],
-      "speed": 70,
-      "beat": 5.0,
+      "speed": 35,
+      "beat": 3.5,
       "behavior": "home",
       "homes": [
         [
@@ -84,7 +94,10 @@
         ]
       ],
       "r": 170,
-      "dart": 0.25
+      "dart": 0.2,
+      "turn": 6.0,
+      "near": 25,
+      "hover": 0.15
     },
     "flame": {
       "count": 0,
@@ -93,8 +106,8 @@
         5,
         32
       ],
-      "speed": 50,
-      "beat": 3.6,
+      "speed": 30,
+      "beat": 3.0,
       "behavior": "home",
       "homes": [
         [
@@ -103,7 +116,10 @@
           0.9
         ]
       ],
-      "r": 200
+      "r": 200,
+      "turn": 4.5,
+      "near": 30,
+      "hover": 0.2
     }
   },
   "roam": {
@@ -111,17 +127,22 @@
     "x1": 2180,
     "y0": 140,
     "y1": 700,
-    "z0": 0.05,
-    "z1": 0.95,
     "low": {
       "chance": 0.18,
       "x0": 740,
       "x1": 1000,
       "y0": 850,
-      "y1": 920,
-      "z0": 0.6,
-      "z1": 0.85
-    }
+      "y1": 920
+    },
+    "back": [
+      0.05,
+      0.78
+    ],
+    "front": [
+      0.94,
+      0.99
+    ],
+    "frontChance": 0.3
   },
   "fgZ": 0.86,
   "haze": {
@@ -228,7 +249,8 @@
         40
       ],
       "alpha": 170
-    }
+    },
+    "nightActivity": 0.5
   },
   "duster": {
     "crownDrop": 8

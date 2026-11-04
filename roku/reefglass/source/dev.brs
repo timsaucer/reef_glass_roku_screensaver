@@ -6,6 +6,7 @@
 '   hour=<h>       pin the tank clock to this hour (e.g. 21.5) instead of local time
 '   daycycle=<s>   sweep a full 24 h day every <s> seconds, to check the lighting ramps
 '   profile=1      print per-section frame timings every 5 s
+'   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, face, tail) twice a second
 
 sub Main(args as dynamic)
     if type(args) <> "roAssociativeArray" then args = {}
@@ -13,5 +14,6 @@ sub Main(args as dynamic)
     if args.hour <> invalid then opts.hour = Val(args.hour)
     if args.daycycle <> invalid then opts.daycycle = Val(args.daycycle)
     if args.profile <> invalid then opts.profile = true
+    if args.trace <> invalid then opts.trace = args.trace
     RunReef(opts, true)
 end sub

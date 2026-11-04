@@ -287,7 +287,7 @@ sub DrawBurrow(s as object, screen as object, t as float)
         g = b.goby
         ' Out: resting on the back rim of the mouth. In: sunk behind the front lip.
         gy = b.y - 19 + (1 - b.out) * 36
-        DrawFishSprite(screen, g, b.x + b.off, gy + Sin(b.gphase * 0.3), 1.0, b.gface, 0.8 + 0.2 * Cos(b.gphase), &hFFFFFF00 + Int(255 * Clamp(b.out * 2.5, 0, 1)))
+        DrawFishSprite(screen, g, b.x + b.off, gy + Sin(b.gphase * 0.3), 1.0, b.gface, 0.95 + 0.05 * Cos(b.gphase), &hFFFFFF00 + Int(255 * Clamp(b.out * 2.5, 0, 1)))
     end if
     for each p in b.puffs
         sc = 0.6 + 0.8 * (1 - p.life)

@@ -71,6 +71,16 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
     DrawMotes(s, screen, 0.5, 1.01)
     if s.night > 0 then screen.DrawRect(0, 0, 1920, 1080, s.nightRgba)
 
+    if s.opts.trace <> invalid and s.frame mod 15 = 0
+        f = s.traced
+        if f = invalid
+            for each g in s.fish
+                if f = invalid and g.name = s.opts.trace then f = g
+            end for
+            s.traced = f
+        end if
+        print "TRACE t "; Int(t * 10) / 10.0; " x "; Int(f.x); " y "; Int(f.y); " z "; Int(f.z * 100) / 100.0; " hd "; Int(f.hd * 100) / 100.0; " spd "; Int(f.spd); " face "; Int(f.face * 100) / 100.0; " amp "; Int(f.amp * 100) / 100.0; " pause "; Int(f.pause * 10) / 10.0
+    end if
     if s.prof <> invalid
         p = s.prof
         p.drw = p.drw + p.clock.TotalMilliseconds()
@@ -110,7 +120,9 @@ sub UpdateLight(s as object, t as float)
     nc = lt.night.rgb
     s.nightRgba = RGBA(nc[0], nc[1], nc[2], Int(lt.night.alpha * s.night))
     ' Fish slow down at night; this scales every cruise speed.
-    s.activity = 0.35 + 0.65 * s.dayK
+    na = 0.5
+    if lt.nightActivity <> invalid then na = lt.nightActivity
+    s.activity = na + (1 - na) * s.dayK
 end sub
 
 ' Two caustic bands scroll over the sand in opposite directions; where they cross, the pattern

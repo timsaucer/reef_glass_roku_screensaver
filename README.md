@@ -55,7 +55,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 `.env` (gitignored) holds `ROKU_IP`, `ROKU_DEV_PASSWORD`, `ROKU_DEV_ID`, `ROKU_SIGN_PASSWORD`.
 
 - `tools/run.sh [secs] [query]`: sideload the dev build, launch it, capture the console, screenshot to `build/shot.jpg`
-- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states
+- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second
 - `tools/sideload.sh roku/reefglass [--release]`, `tools/console.py <secs> [--launch]`, `tools/screenshot.sh out.jpg`
 - `tools/placeholders.py`: regenerate placeholder art (overwrites real art; for bootstrapping only)
 
