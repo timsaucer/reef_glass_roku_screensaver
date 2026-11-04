@@ -12,7 +12,8 @@ Usage (TripoSR's env, which has moderngl and trimesh):
       tail split also gives "ped", where the tail joins), and the "views" block of the species in
       scenes/reef.json (per view: body anchor, tail anchor, tail hinge; see fish.brs).
       --len/--ped for a new species; --ball 1.2 exports an inflated form (pufferfish) as the
-      species' "ball" block, in images/<name>_ball_atlas<p>.png
+      species' "ball" block, in images/<name>_ball_atlas<p>.png; --under 0.5 shades the
+      underside as if lit from above (the damselfish)
 
 The side photo is projected onto both flanks (--photo) so they keep the photo's detail; the
 mesh's own colors show where the surface turns away from the side (face, back, belly).
