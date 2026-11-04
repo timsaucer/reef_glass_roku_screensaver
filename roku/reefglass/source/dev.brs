@@ -7,7 +7,8 @@
 '   daycycle=<s>   sweep a full 24 h day every <s> seconds, to check the lighting ramps
 '   profile=1      print per-section frame timings every 5 s
 '   pose=<name>    draw that species through a U-turn, in 9 steps across the screen
-'                  (fine=1: only 45 to 90 degrees, where the head-on view fades in)
+'                  (fine=1: only 45 to 90 degrees; pp=<0..1>: that much puffed up)
+'   puff=1         the pufferfish puffs up as soon as its cooldown allows (set short)
 '   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, face, tail) twice a second
 
 sub Main(args as dynamic)
@@ -19,5 +20,7 @@ sub Main(args as dynamic)
     if args.trace <> invalid then opts.trace = args.trace
 if args.pose <> invalid then opts.pose = args.pose
 if args.fine <> invalid then opts.poseFine = true
+if args.puff <> invalid then opts.puff = true
+if args.pp <> invalid then opts.posePuff = Val(args.pp)
     RunReef(opts, true)
 end sub

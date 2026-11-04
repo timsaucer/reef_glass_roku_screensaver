@@ -10,7 +10,9 @@ Usage (TripoSR's env, which has moderngl and trimesh):
       for the headings in ANGLES, -60..90 deg (the rest are mirrors), sized so the side view
       is "sideLen" px long (first time: as long as the old <name>_body/tail sprites, whose
       tail split also gives "ped", where the tail joins), and the "views" block of the species in
-      scenes/reef.json (per view: body anchor, tail anchor, tail hinge; see fish.brs)
+      scenes/reef.json (per view: body anchor, tail anchor, tail hinge; see fish.brs).
+      --len/--ped for a new species; --ball 1.2 exports an inflated form (pufferfish) as the
+      species' "ball" block, in images/<name>_ball_atlas<p>.png
 
 The side photo is projected onto both flanks (--photo) so they keep the photo's detail; the
 mesh's own colors show where the surface turns away from the side (face, back, belly).
@@ -229,10 +231,20 @@ BEND_DEG = 36  # full bend through a turn, head to tail
 ANGLES = [-60, -50, -40, -30, -20, -10, 0, 8, 16, 24, 31, 38, 44, 50, 55, 60, 64, 68, 72, 75, 78, 81, 84, 86, 88, 90]
 
 
-def export_views(r, name, S=1024):
+# A ball (the inflated pufferfish) hardly turns while inflated: a few headings, no bends.
+BALL_ANGLES = [-60, -40, -20, 0, 20, 40, 60, 75, 90]
+
+
+def export_views(r, name, S=1024, ball=None, length=None, ped=None):
+    """ball: the inflated form of species name, drawn this many times as long as its normal
+    side view; stored as the species' "ball" block. length/ped: side length and tail joint for a
+    species exported for the first time without old sprites."""
     from imgio import save_rgba
     cfg = json.loads(SCENE.read_text())
     sp = cfg["species"][name]
+    if length:
+        sp["sideLen"] = length
+        sp["ped"] = ped if ped is not None else 0.22
     # Old side sprites give the length on screen and where the tail joins.
     # (Recorded in reef.json as "sideLen" and "ped" on the first export.)
     if "sideLen" not in sp:
@@ -242,6 +254,9 @@ def export_views(r, name, S=1024):
         sp["sideLen"] = bw + tw - ov
         sp["ped"] = round((tw - ov) / sp["sideLen"], 3)
     total, frac = sp["sideLen"], sp["ped"]
+    angles, prefix = ANGLES, name
+    if ball:
+        total, frac, angles, prefix = round(sp["sideLen"] * ball), ped if ped is not None else 0.15, BALL_ANGLES, f"{name}_ball"
     v = r.verts
     y0, y1 = float(v[:, 1].min()), float(v[:, 1].max())
     yp = y0 + frac * (y1 - y0)
@@ -274,17 +289,17 @@ def export_views(r, name, S=1024):
             out_views.append(out)
         return out_views
 
-    views = render_set(0.0, list(enumerate(ANGLES)), "")
+    views = render_set(0.0, list(enumerate(angles)), "")
     # Bent sets for the turn (headings 0..90, where every U-turn passes): a third, two thirds
     # and full bend,
     # tail swinging toward the near flank (p) or the far one (m).
     fwd = [(i, d) for i, d in enumerate(ANGLES) if d >= 0]
     sets = {}
-    for key, bf in (("p1", 1 / 3), ("p2", 2 / 3), ("p3", 1.0), ("m1", -1 / 3), ("m2", -2 / 3), ("m3", -1.0)):
+    for key, bf in () if ball else (("p1", 1 / 3), ("p2", 2 / 3), ("p3", 1.0), ("m1", -1 / 3), ("m2", -2 / 3), ("m3", -1.0)):
         sets[key] = render_set(bf * math.radians(BEND_DEG), fwd, key)
     # Pack into atlas pages (shelf packing, tallest first): a few big palette PNGs instead of
     # a thousand small ones, each of which would carry its own palette and zip entry.
-    for f in IMAGES.glob(f"{name}_atlas*.png"):
+    for f in IMAGES.glob(f"{prefix}_atlas*.png"):
         f.unlink()
     order = sorted(range(len(sprites)), key=lambda j: -sprites[j].height)
     place, pages = {}, []
@@ -305,17 +320,21 @@ def export_views(r, name, S=1024):
         x += w
         shelf = max(shelf, h)
     for pi, pg in enumerate(pages):
-        a = np.array(pg)[..., 3]
-        ys = np.nonzero(a.max(axis=1))[0]
-        pg = pg.crop((0, 0, PW, int(ys.max()) + 2))
-        save_rgba(pg, IMAGES / f"{name}_atlas{pi}.png")
+        # Trim to the lowest sprite rectangle (not the lowest visible pixel: sprites keep a
+        # transparent margin, and a region past the page's edge fails to load).
+        bottom = max(pl[2] + pl[4] for pl in place.values() if pl[0] == pi)
+        pg = pg.crop((0, 0, PW, bottom + 1))
+        save_rgba(pg, IMAGES / f"{prefix}_atlas{pi}.png")
 
     def fix(vs):
         # [bx, by, bodySprite, tx, ty, tailSprite, hx, hy] -> body/tail atlas places inline
         return [v[0:2] + v[3:5] + v[6:8] + place[v[2]] + place[v[5]] for v in vs]
     views = fix(views)
     sets = {k2: fix(v2) for k2, v2 in sets.items()}
-    sp["views"] = {"deg": ANGLES, "pages": len(pages), "v": views, "bend": {"deg": BEND_DEG, "from": fwd[0][0], "sets": sets}}
+    if ball:
+        sp["ball"] = {"deg": angles, "pages": len(pages), "v": views, "scale": ball}
+    else:
+        sp["views"] = {"deg": ANGLES, "pages": len(pages), "v": views, "bend": {"deg": BEND_DEG, "from": fwd[0][0], "sets": sets}}
     SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
     print(f"{name}: {len(views)} views + {len(fwd)}x{len(sets)} bent, {len(pages)} atlas pages, side length {total}px, peduncle at {frac:.2f}")
 
@@ -329,6 +348,9 @@ if __name__ == "__main__":
     ap.add_argument("--photo")
     ap.add_argument("--fat", type=float, default=1.0)
     ap.add_argument("--bend", type=float, default=0.0, help="strip: bend in degrees")
+    ap.add_argument("--ball", type=float, help="views: export as the species' inflated form, this times its length")
+    ap.add_argument("--len", type=int, help="views: side length in px (first export of a new species)")
+    ap.add_argument("--ped", type=float, help="views: tail joint, fraction of the length from the tail end")
     a = ap.parse_args()
     r = Renderer(a.mesh, a.size, a.fat)
     if a.photo:
@@ -344,7 +366,7 @@ if __name__ == "__main__":
         imgs = [r.render(rot_y(-math.radians(d)) @ R0) for d in range(-60, 181, 30)]
         label_row(imgs, a.out)
     if a.cmd == "views":
-        export_views(r, a.out)
+        export_views(r, a.out, ball=a.ball, length=a.len, ped=a.ped)
     if a.cmd == "axes":
         label_row([r.render(R) for R in AXES.values()], a.out)
         print("order:", " ".join(AXES))

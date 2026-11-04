@@ -74,7 +74,7 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
             end for
             s.traced = f
         end if
-        print "TRACE t "; Int(t * 10) / 10.0; " x "; Int(f.x); " y "; Int(f.y); " z "; Int(f.z * 100) / 100.0; " hd "; Int(f.hd * 100) / 100.0; " spd "; Int(f.spd); " amp "; Int(f.amp * 100) / 100.0; " pause "; Int(f.pause * 10) / 10.0
+        print "TRACE t "; Int(t * 10) / 10.0; " x "; Int(f.x); " y "; Int(f.y); " z "; Int(f.z * 100) / 100.0; " hd "; Int(f.hd * 100) / 100.0; " spd "; Int(f.spd); " amp "; Int(f.amp * 100) / 100.0; " pause "; Int(f.pause * 10) / 10.0; " puff "; f.puff
     end if
     if s.prof <> invalid
         p = s.prof

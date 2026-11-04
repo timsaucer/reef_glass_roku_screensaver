@@ -16,6 +16,7 @@ with [mflux](https://github.com/filipstrand/mflux) on 2026-11-03 and 2026-11-04;
 | `gramma_atlas*.png` | generated, then 3D | `gramma.txt`, seed 2 | keyed (`gen/meshes/gramma_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT; `gen/meshes/gramma.ply`), rendered straight and bent by `tools/fishviews.py` with the photo's interior projected onto the flanks |
 | `moray.png`, `moray_jaw.png` | generated | `moray.txt`, seed 1 | `tools/cutout.py --crop 150,120,600,576`, then `tools/moray.py` (jaw split, tilt, fade) |
 | `cave_shade.png` | from `bg.jpg` | — | `tools/moray.py` |
+| `puffer_atlas*.png`, `puffer_ball_atlas*.png` | generated, then 3D | `puffer.txt`, `puffer_ball.txt`, seed 1 | keyed (`gen/meshes/puffer_full.png`, `puffer_ball_full.png`), reconstructed in 3D with [TripoSR](https://github.com/VAST-AI-Research/TripoSR) (MIT), rendered by `tools/fishviews.py` |
 | `starfish.png` | generated | `starfish.txt`, seed 1 | `tools/cutout.py --squash 0.42` |
 | `duster_crown.png`, `duster_tube.png` | generated | `duster.txt`, seed 1 | `tools/cutout.py --crop` (crown and tube cut separately) |
 | `caustic_*.png`, `ray.png`, `mote.png`, `puff.png` | procedural | — | `tools/fx.py`, `tools/caustics.py` |

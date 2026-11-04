@@ -63,6 +63,8 @@ sub FishInit(s as object)
         sp = cfg.species[name]
         if sp.count > 0
             spr = LoadFishViews(name, sp.views)
+            spr.ball = invalid
+            if sp.ball <> invalid then spr.ball = LoadBallViews(name, sp.ball)
             s.sprites[name] = spr
             lead = invalid
             for i = 0 to sp.count - 1
@@ -142,6 +144,22 @@ function LoadFishViews(name as string, vc as object) as object
     return spr
 end function
 
+' A pufferfish's inflated form: a few views of the ball (<name>_ball_atlas<p>.png).
+function LoadBallViews(name as string, vc as object) as object
+    ball = { views: [], ang: [] }
+    for each d in vc.deg
+        ball.ang.Push(d * 3.14159265 / 180)
+    end for
+    pages = []
+    for p = 0 to vc.pages - 1
+        pages.Push(CreateObject("roBitmap", "pkg:/images/" + name + "_ball_atlas" + p.ToStr() + ".png"))
+    end for
+    for each v in vc.v
+        ball.views.Push(NewFishView(pages, v))
+    end for
+    return ball
+end function
+
 function NewFish(s as object, sp as object, spr as object, idx as integer) as object
     f = {
         sp: sp, spr: spr
@@ -154,6 +172,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         size: 1.0
         cruise: sp.speed * RndRange(0.85, 1.15)
         big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false, slot: invalid, wob: 0.0, visitAt: invalid
+        puff: 0.0, pmode: "none", ptime: 0.0, pcool: RndRange(40, 90)
         radius: 0.5 * sp.sideLen
     }
     if sp.radius <> invalid then f.radius = sp.radius
@@ -309,6 +328,8 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' Fish swing through the middle of a turn a little faster than they start and end it.
         ec = 1 - Abs(Cos(f.hd))
         w = w * (1 + 0.6 * ec * ec)
+        ' A puffed-up fish barely turns.
+        if f.puff > 0 then w = w * (1 - 0.85 * f.puff)
         if f.turnDir = 0 and Abs(diff) > 1.6
             ' A U-turn: swing the head toward the glass, whichever way that is.
             if Cos(f.hd) >= 0 then f.turnDir = 1 else f.turnDir = -1
@@ -332,6 +353,7 @@ sub FishUpdate(s as object, t as float, dt as float)
 
         ' Speed: cruise, easing off only a little through turns; nearly still while hovering.
         want = f.cruise * f.mul * act * (0.8 + 0.2 * Cos(diff))
+        if f.spr.ball <> invalid then want = want * (1 - 0.85 * UpdatePuff(s, f, dt))
         if f.pause > 0
             f.pause = f.pause - dt
             want = f.cruise * 0.12
@@ -375,6 +397,49 @@ sub FishUpdate(s as object, t as float, dt as float)
     end for
     SortFish(s.fish)
 end sub
+
+' Pufferfish: swells into a spiny ball when a big fish comes close (or, rarely, on its own),
+' hangs there drifting, then slowly deflates; then it cannot puff again for a while.
+' Returns how puffed it is (0 .. 1).
+function UpdatePuff(s as object, f as object, dt as float) as float
+    if f.pmode = "none"
+        if s.opts.puff <> invalid and f.pcool > 3 then f.pcool = 3
+        f.pcool = f.pcool - dt
+        if f.pcool <= 0
+            ' On its own only where it can be seen: on screen, in front of the reef.
+            go = (Rnd(0) < dt / 150 and f.z > s.cfg.fgZ and f.x > 150 and f.x < 1770)
+            if s.opts.puff <> invalid then go = true
+            if not go and s.frame mod 6 = 0
+                for each o in s.fish
+                    if o.big and Abs(o.z - f.z) < 0.2
+                        dx = o.x - f.x : dy = o.y - f.y
+                        if dx * dx + dy * dy < 170 * 170 then go = true
+                    end if
+                end for
+            end if
+            if go then f.pmode = "inflate"
+        end if
+    else if f.pmode = "inflate"
+        f.puff = f.puff + dt / 0.5
+        if f.puff >= 1
+            f.puff = 1
+            f.pmode = "ball"
+            f.ptime = RndRange(6, 12)
+        end if
+    else if f.pmode = "ball"
+        f.ptime = f.ptime - dt
+        if f.ptime <= 0 then f.pmode = "deflate"
+    else
+        f.puff = f.puff - dt / 1.8
+        if f.puff <= 0
+            f.puff = 0
+            f.pmode = "none"
+            f.pcool = RndRange(90, 180)
+            if s.opts.puff <> invalid then f.pcool = 3
+        end if
+    end if
+    return f.puff
+end function
 
 ' A follower keeps to its place (slot: distance behind, height beside) by its leader, the
 ' place drifting slowly so a school never moves as a rigid block. It matches the leader's
@@ -469,6 +534,39 @@ sub FishDraw(s as object, screen as object, f as object)
         if hd > 3.14159265 then hd = hd - 6.2831853
         mir = -1.0
     end if
+    away = (Sin(f.hd) < 0)
+    p = f.puff
+    if p < 0.99
+        ' Normal form; while swelling it stretches (taller more than longer) and fades out
+        ' as the ball takes over.
+        aN = 1 - SmoothStep(0.45, 0.95, p)
+        DrawNormalView(s, screen, f, spr, hd, mir, away, sc * (1 + 0.25 * p), sc * (1 + 0.7 * p), tailK, FadeCol(col, aN))
+    end if
+    if p > 0.01 and spr.ball <> invalid
+        ' The ball: nearest of its few views, growing from smaller than the fish to full.
+        bl = spr.ball
+        i = 0
+        while i < bl.ang.Count() - 1 and hd > 0.5 * (bl.ang[i] + bl.ang[i + 1])
+            i = i + 1
+        end while
+        v = bl.views[i]
+        bs = sc * (0.5 + 0.5 * SmoothStep(0, 1, p))
+        bsx = bs * mir
+        cb = FadeCol(col, SmoothStep(0.15, 0.6, p))
+        DrawFishTail(screen, v, f.x, f.y, bsx, bs, 1, cb)
+        screen.DrawScaledObject(f.x - bsx * v.bx, f.y - bs * v.by, bsx, bs, v.b, cb)
+    end if
+end sub
+
+' The tint with its alpha scaled by k.
+function FadeCol(col as integer, k as float) as integer
+    a = col and &hFF
+    return (col and &hFFFFFF00) + Int(a * k)
+end function
+
+' The fish's normal form at heading hd (already mapped to -60..90, mirrored by mir): nearest
+' rendered view, bent while turning, with its outline width interpolated between views.
+sub DrawNormalView(s as object, screen as object, f as object, spr as object, hd as float, mir as float, away as boolean, scx as float, sc as float, tailK as float, col as integer)
     ' Nearest rendered view (no blending: two views a few degrees apart show double faces).
     ang = spr.ang
     n = ang.Count()
@@ -487,7 +585,6 @@ sub FishDraw(s as object, screen as object, f as object)
         kx = 1 + fr * (spr.views[j].w / spr.views[i].w - 1)
         if kx < 0.8 or kx > 1.25 then kx = 1
     end if
-    away = (Sin(f.hd) < 0)
     v = spr.views[i]
     ' Bent view while turning: a third, two thirds or full bend, tail toward the turn's
     ' inside. Mirroring swaps the fish's flanks, so the set flips with it.
@@ -499,7 +596,7 @@ sub FishDraw(s as object, screen as object, f as object)
         if f.bend * mir > 0 then key = "p" + lv else key = "m" + lv
         v = spr.bsets[key][i - spr.bfrom]
     end if
-    sx = sc * mir * kx
+    sx = scx * mir * kx
     ' Tail behind the body, or in front when the fish swims away (tail nearer the glass).
     if not away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col)
     screen.DrawScaledObject(f.x - sx * v.bx, f.y - sc * v.by, sx, sc, v.b, col)
@@ -523,7 +620,8 @@ sub DrawPoses(s as object, screen as object, name as string)
     for each g in s.fish
         if g.name = name
             screen.DrawRect(0, 380, 1920, 320, &h102030FF)
-            f = { sp: g.sp, spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0, bend: 0.8 }
+            f = { sp: g.sp, spr: g.spr, size: g.size, z: 1.0, hd: 0.0, amp: 0.1, phase: 0.0, x: 0.0, y: 540.0, bend: 0.8, puff: 0.0 }
+            if s.opts.posePuff <> invalid then f.puff = s.opts.posePuff : f.bend = 0
             for i = 0 to 8
                 f.hd = s.poseA0 + (s.poseA1 - s.poseA0) * i / 8
                 f.x = 120 + i * 210

@@ -9,7 +9,7 @@ Status: **photoreal art in place** for the plate and all animals.
 
 | | |
 |---|---|
-| Fish | a clownfish pair roaming the whole tank, the smaller male following the female, now and then dropping by their anemone (part of the plate) to hover over it, blue tangs and yellow tangs cruising the whole tank, royal grammas wandering the tank and returning to hover at their ledges, a loose school of blue damselfish roaming the tank behind a leader, now and then pausing at their coral head |
+| Fish | a clownfish pair roaming the whole tank, the smaller male following the female, now and then dropping by their anemone (part of the plate) to hover over it, blue tangs and yellow tangs cruising the whole tank, royal grammas wandering the tank and returning to hover at their ledges, a porcupine pufferfish that now and then puffs up into a spiny ball (when a tang swims close, or on its own), hangs there a while and slowly deflates, a loose school of blue damselfish roaming the tank behind a leader, now and then pausing at their coral head |
 | Critters | feather duster worms that snap shut when a fish swims close and slowly unfurl, a giant clam, a starfish crawling across the sand |
 | Moray eel | a snowflake moray lives in the cave under the right-hand rock: it breathes with a slow gape, slides out to look around, and pulls back into the dark when a big fish swims close |
 | Swimming | each fish is a 3D model (reconstructed from its photo), drawn from 26 pre-rendered views (snapping to the nearest, never blending two), with three strengths of body bend through the turn, so it turns with real thickness and shows its face head-on; fish swim at any angle between side-on and nearly head-on, visibly coming toward the glass and heading off into the distance; depth changes across the reef happen only over open water, so fish never pop from behind the coral to in front of it |
@@ -42,7 +42,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 | `bg.jpg` | 1920×1080 opaque plate: rock, coral, sand, water. | no fish, no critters that move |
 | `fg.png` | near rocks/coral in front of most fish | full-frame RGBA |
 | `rocks_low.png` | plate's non-sand pixels from `caustics.top` down | drawn over the caustics so light lands on sand only |
-| `<fish>_atlas<p>.png` | the fish's body and tail sprites at every heading of `views.deg` (-60 to 90 degrees; the rest are mirrors), straight and bent, packed into atlas pages | per view in `views.v` and `views.bend.sets`: fish center in the body sprite, in the tail sprite, tail joint relative to the center, then each sprite's atlas page and rectangle |
+| `<fish>_atlas<p>.png`, `puffer_ball_atlas<p>.png` | the fish's body and tail sprites at every heading of `views.deg` (-60 to 90 degrees; the rest are mirrors), straight and bent, packed into atlas pages | per view in `views.v` and `views.bend.sets`: fish center in the body sprite, in the tail sprite, tail joint relative to the center, then each sprite's atlas page and rectangle |
 | `duster_crown.png`, `duster_tube.png` | feather duster fan; tube | crown's bottom center sits on the tube mouth |
 | `starfish.png` | starfish, seen at a low angle | centered |
 | `moray.png`, `moray_jaw.png`, `cave_shade.png` | eel head and front body facing left, without its lower jaw; the lower jaw; the cave's dark interior (alpha rising toward the back) | `moray.x,y` left middle when fully out; jaw hinged at `moray.jawHinge`; shade at `moray.shade` |
@@ -53,7 +53,7 @@ Final art must keep these conventions so it drops in without code changes. Posit
 `.env` (gitignored) holds `ROKU_IP`, `ROKU_DEV_PASSWORD`, `ROKU_DEV_ID`, `ROKU_SIGN_PASSWORD`.
 
 - `tools/run.sh [secs] [query]`: sideload the dev build, launch it, capture the console, screenshot to `build/shot.jpg`
-- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second, `pose=<species>` draw that fish bent through a U-turn in 9 steps (`fine=1`: 45 to 90 degrees only)
+- launch parameters: `hour=<h>` pin the clock (e.g. `hour=23`), `daycycle=<s>` sweep a whole day in s seconds, `profile=1` print timings and critter states, `trace=<species>` print one fish's motion twice a second, `pose=<species>` draw that fish bent through a U-turn in 9 steps (`fine=1`: 45 to 90 degrees only; `pp=0.5`: half puffed), `puff=1` make the pufferfish puff every few seconds
 - `tools/sideload.sh roku/reefglass [--release]`, `tools/console.py <secs> [--launch]`, `tools/screenshot.sh out.jpg`
 - `tools/placeholders.py`: regenerate placeholder art (overwrites real art; for bootstrapping only)
 
@@ -72,7 +72,8 @@ Final art must keep these conventions so it drops in without code changes. Posit
    `ext/venv/bin/python tools/fish3d.py gen/meshes/<name>_full.png gen/meshes/<name>.ply`, then
    `ext/venv/bin/python tools/fishviews.py views gen/meshes/<name>.ply <name> --photo
    gen/meshes/<name>_full.png [--fat 1.25]` renders the turn views (the photo is projected onto
-   both flanks; `--fat` thickens thin fish a little). `fishviews.py strip` previews a turn. The moray: `tools/moray.py`.
+   both flanks; `--fat` thickens thin fish a little; `--len`/`--ped` for a new species; `--ball 1.4`
+   exports the pufferfish's inflated form). `fishviews.py strip` previews a turn. The moray: `tools/moray.py`.
 5. `tools/icons.py <screenshot>` for icons and the store poster.
 
 TripoSR setup (not committed; `ext/` is gitignored):
