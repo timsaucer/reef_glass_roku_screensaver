@@ -22,8 +22,9 @@
 '   home  wander slowly around a home point (the anemone, a ledge, a coral head); "dart"
 '         adds short fast bursts, as damselfish do; "hover" is the chance of resting a while,
 '         "shuffle" makes those rests fidgety; "excursion" is the chance of a short trip off
-'         home and back; "pair" makes the second and later fish follow the first (any
-'         behavior); "visit" (roam) is the chance of dropping by the anemone to hover
+'         home and back; "follow" ("pair" or "school") makes the second and later fish
+'         follow the first (any behavior); "visit" (roam) is the chance of dropping by a
+'         spot (its own of "homes", else "visitAt", else the anemone) to hover
 
 sub FishInit(s as object)
     cfg = s.cfg
@@ -31,6 +32,8 @@ sub FishInit(s as object)
     s.fish = []
     ' Depth units per pixel of travel along the heading.
     s.kz = 1.0 / 800
+    s.depthMin = 0.72
+    if cfg.depthScale <> invalid then s.depthMin = cfg.depthScale
     ' Coral map: rows of '#' (coral) and '.' (open water), one char per cell px square.
     s.coral = invalid
     if cfg.coral <> invalid
@@ -65,14 +68,23 @@ sub FishInit(s as object)
             for i = 0 to sp.count - 1
                 f = NewFish(s, sp, spr, i)
                 f.name = name
-                ' A pair (clownfish): the first is the larger female; the rest are smaller and
-                ' follow her about.
-                if sp.pair = true
+                ' A pair or school ("follow"): the first leads, the rest follow it about, each at
+                ' its own place behind and beside it. A pair's follower (the male clownfish) is
+                ' smaller.
+                if sp.follow <> invalid
                     if lead = invalid
                         lead = f
                     else
                         f.leader = lead
-                        f.size = 0.85
+                        L = sp.sideLen
+                        if sp.follow = "pair"
+                            f.slot = [0.9 * L, 24]
+                            f.size = 0.85
+                        else
+                            f.slot = [RndRange(0.6, 2.2) * L, RndRange(-1, 1) * 0.9 * L]
+                            f.size = RndRange(0.85, 1.05)
+                        end if
+                        f.wob = Rnd(0) * 6.283
                     end if
                 end if
                 s.fish.Push(f)
@@ -141,7 +153,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         mul: 1.0, timer: 0.0, pause: 0.0
         size: 1.0
         cruise: sp.speed * RndRange(0.85, 1.15)
-        big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false
+        big: false, turnDir: 0, blockT: 0.0, leader: invalid, away: false, visiting: false, slot: invalid, wob: 0.0, visitAt: invalid
         radius: 0.5 * sp.sideLen
     }
     if sp.radius <> invalid then f.radius = sp.radius
@@ -164,6 +176,8 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
     else
         r = s.cfg.roam
         f.z0 = r.back[0] : f.z1 = r.front[1]
+        ' A roamer with "homes" visits its own one.
+        if sp.homes <> invalid then f.visitAt = sp.homes[idx mod sp.homes.Count()]
     end if
     PickTarget(s, f)
     f.x = f.tx : f.y = f.ty : f.z = f.tz
@@ -211,10 +225,13 @@ sub PickTarget(s as object, f as object)
                 f.visiting = false
                 f.pause = RndRange(3, 6)
             else if f.z > s.cfg.fgZ and Rnd(0) < sp.visit
-                a = s.cfg.anemone
-                f.tx = a.home[0] + RndRange(-60, 60)
-                f.ty = a.home[1] + RndRange(-30, 30)
-                f.tz = RndRange(0.93, 0.98)
+                ' The spot: the species' "visitAt" [x, y, z], or the anemone.
+                v = f.visitAt
+                if v = invalid then v = sp.visitAt
+                if v = invalid then v = [s.cfg.anemone.home[0], s.cfg.anemone.home[1], 0.955]
+                f.tx = v[0] + RndRange(-60, 60)
+                f.ty = v[1] + RndRange(-30, 30)
+                f.tz = Clamp(v[2] + RndRange(-0.025, 0.025), s.cfg.fgZ + 0.02, 0.99)
                 f.visiting = true
                 f.timer = 25
             end if
@@ -263,7 +280,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         ' Move on to the next waypoint before arriving, so the path flows instead of stopping.
         ' Arrival counts across-the-screen distance only; depth is picked up on the way.
         if f.leader <> invalid
-            FollowLeader(f)
+            FollowLeader(f, t)
             dx = f.tx - f.x
             dzp = (f.tz - f.z) / kz
         else if (Abs(dx) < sp.near and f.pause <= 0) or f.timer < 0
@@ -330,7 +347,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.spd = f.spd + (want - f.spd) * Clamp(rate * dt, 0, 1)
 
         ' Move along the heading. Far fish cover less screen for the same swimming speed.
-        sc = 0.4 + 0.6 * f.z
+        sc = DepthScale(s, f.z)
         c = Cos(f.hd)
         f.x = f.x + c * f.spd * sc * dt
         zn = Clamp(f.z + Sin(f.hd) * f.spd * kz * dt, f.z0, f.z1)
@@ -350,7 +367,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.phase = f.phase + dt * 6.283 * sp.beat * (0.5 + 0.5 * Clamp(effort, 0, 2))
 
         ' Cruisers well off-screen may jump to a new depth; nobody can see it.
-        if sp.behavior = "roam" and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
+        if sp.behavior = "roam" and f.leader = invalid and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
             r = s.cfg.roam
             if Rnd(0) < r.frontChance then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
             f.tz = f.z
@@ -359,13 +376,15 @@ sub FishUpdate(s as object, t as float, dt as float)
     SortFish(s.fish)
 end sub
 
-' A follower keeps a little behind and below its leader, matching her pace: faster when it
-' falls back, nearly still when she hovers, and straight on (no fussing turns) when close.
-sub FollowLeader(f as object)
+' A follower keeps to its place (slot: distance behind, height beside) by its leader, the
+' place drifting slowly so a school never moves as a rigid block. It matches the leader's
+' pace: faster when it falls back, nearly still when the leader hovers, and straight on (no
+' fussing turns) when close.
+sub FollowLeader(f as object, t as float)
     L = f.leader
-    gap = 0.9 * L.sp.sideLen
+    gap = f.slot[0] * (1 + 0.15 * Sin(t * 0.3 + f.wob))
     px = L.x - Cos(L.hd) * gap
-    py = L.y + 24
+    py = L.y + f.slot[1] + 12 * Sin(t * 0.21 + 2 * f.wob)
     d = Sqr((px - f.x) * (px - f.x) + (py - f.y) * (py - f.y))
     if d > gap * 0.5 then f.tx = px else f.tx = f.x + Cos(f.hd) * 60
     f.ty = py
@@ -376,6 +395,13 @@ sub FollowLeader(f as object)
     f.timer = 10
 end sub
 
+' Size (and on-screen speed) by depth: the back of the tank is only a little farther from
+' the viewer than the front glass, so far fish are only somewhat smaller (cfg.depthScale at
+' z = 0, full size at z = 1).
+function DepthScale(s as object, z as float) as float
+    return s.depthMin + (1 - s.depthMin) * z
+end function
+
 ' True when moving to depth zn would take the fish across the reef layer while
 ' coral is behind or in front of it.
 function CrossesCoral(s as object, f as object, zn as float) as boolean
@@ -385,7 +411,7 @@ function CrossesCoral(s as object, f as object, zn as float) as boolean
     end for
     if not cross or s.coral = invalid then return false
     c = s.coral
-    sc = f.size * (0.4 + 0.6 * f.z)
+    sc = f.size * DepthScale(s, f.z)
     hl = 0.5 * sc * f.spr.bw + 0.3 * sc * f.spr.tw
     hh = 0.4 * sc * f.spr.bh
     nr = c.rows.Count()
@@ -432,7 +458,7 @@ end sub
 sub FishDraw(s as object, screen as object, f as object)
     col = s.tints[Int(f.z * 20 + 0.5)]
     tailK = 1 - f.amp * (0.5 + 0.5 * Cos(f.phase))
-    sc = f.size * (0.4 + 0.6 * f.z)
+    sc = f.size * DepthScale(s, f.z)
     spr = f.spr
     ' Heading to a rendered view: facing right (cos >= 0) directly; facing left as the mirror
     ' of the matching right-facing heading.

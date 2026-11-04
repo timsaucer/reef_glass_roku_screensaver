@@ -2694,9 +2694,9 @@
       },
       "sideLen": 130,
       "ped": 0.238,
-      "pair": true,
       "shuffle": true,
-      "visit": 0.2
+      "visit": 0.2,
+      "follow": "pair"
     },
     "bluetang": {
       "count": 2,
@@ -8080,9 +8080,9 @@
     },
     "gramma": {
       "count": 2,
-      "speed": 22,
+      "speed": 32,
       "beat": 3.0,
-      "behavior": "home",
+      "behavior": "roam",
       "homes": [
         [
           545,
@@ -8095,9 +8095,8 @@
           0.9
         ]
       ],
-      "r": 70,
       "turn": 5.0,
-      "near": 20,
+      "near": 60,
       "hover": 0.35,
       "sideLen": 80,
       "ped": 0.237,
@@ -10779,24 +10778,17 @@
             ]
           }
         }
-      }
+      },
+      "visit": 0.35,
+      "shuffle": true
     },
     "damsel": {
       "count": 6,
-      "speed": 35,
+      "speed": 42,
       "beat": 3.5,
-      "behavior": "home",
-      "homes": [
-        [
-          1530,
-          440,
-          0.88
-        ]
-      ],
-      "r": 170,
-      "dart": 0.2,
+      "behavior": "roam",
       "turn": 6.0,
-      "near": 25,
+      "near": 60,
       "hover": 0.15,
       "sideLen": 74,
       "ped": 0.243,
@@ -13478,7 +13470,15 @@
             ]
           }
         }
-      }
+      },
+      "follow": "school",
+      "visit": 0.3,
+      "visitAt": [
+        1530,
+        440,
+        0.88
+      ],
+      "shuffle": true
     }
   },
   "roam": {
@@ -13647,5 +13647,6 @@
     "threat": 170,
     "gape": 6,
     "clip": 1660
-  }
+  },
+  "depthScale": 0.72
 }
