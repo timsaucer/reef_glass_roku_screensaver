@@ -184,9 +184,11 @@ def crop_alpha(im, pad=2):
     return im.crop((x0, y0, x1, y1)), (int(x0), int(y0))
 
 
-# View headings (deg): wide steps side-on and away, narrow ones nearing head-on, where the face
-# and eyes move fastest and a blend of distant views would show double.
-ANGLES = [-60, -45, -30, -15, 0, 12, 24, 35, 45, 54, 62, 69, 75, 80, 84, 87, 90]
+# View headings (deg). The screensaver snaps to the nearest one (blending two views shows
+# double faces), so they are close enough that each change is a small step: wider side-on and
+# away, where a fish changes little as it turns, down to 2 degrees nearing head-on, where the
+# face and eyes move fastest.
+ANGLES = [-60, -50, -40, -30, -20, -10, 0, 8, 16, 24, 31, 38, 44, 50, 55, 60, 64, 68, 72, 75, 78, 81, 84, 86, 88, 90]
 
 
 def export_views(r, name, S=1024):
@@ -219,7 +221,7 @@ def export_views(r, name, S=1024):
         out = []
         for part, tag in ((body, "b"), (tail, "t")):
             im, (cx0, cy0) = crop_alpha(premul_resize(r.render(R, part), k))
-            save_rgba(im, IMAGES / f"{name}_{i}{tag}.png")
+            save_rgba(im, IMAGES / f"{name}_{i}{tag}.png", colors=128)
             # Where the mesh's center (the render's center) falls in this sprite.
             out += [round(S / 2 * k - cx0, 1), round(S / 2 * k - cy0, 1)]
         h = R @ np.array([0, yp, zp], np.float32)

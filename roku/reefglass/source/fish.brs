@@ -342,39 +342,20 @@ sub FishDraw(s as object, screen as object, f as object)
         if hd > 3.14159265 then hd = hd - 6.2831853
         mir = -1.0
     end if
+    ' Nearest rendered view (no blending: two views a few degrees apart show double faces).
     ang = spr.ang
     n = ang.Count()
-    i = 0 : fr = 0.0
-    if hd >= ang[n - 1]
-        i = n - 1
-    else if hd > ang[0]
-        while ang[i + 1] <= hd
-            i = i + 1
-        end while
-        fr = (hd - ang[i]) / (ang[i + 1] - ang[i])
-        ' A short blend in the middle of each step: mostly one clean view, never long half
-        ' and half (two views a few degrees apart show double eyes).
-        fr = SmoothStep(0.3, 0.7, fr)
-    end if
-    ' Nearest two views, the second faded in over the first (both from one model, so they
-    ' line up and the blend is invisible).
+    i = 0
+    while i < n - 1 and hd > 0.5 * (ang[i] + ang[i + 1])
+        i = i + 1
+    end while
     away = (Sin(f.hd) < 0)
-    va = spr.views[i]
-    vb = invalid
-    if fr > 0.02 then vb = spr.views[i + 1]
-    cb = FadeCol(col, fr)
+    v = spr.views[i]
     sx = sc * mir
-    ' Tails behind the bodies, or in front when the fish swims away (tail nearer the glass).
-    if not away
-        DrawFishTail(screen, va, f.x, f.y, sx, sc, tailK, col)
-        if vb <> invalid then DrawFishTail(screen, vb, f.x, f.y, sx, sc, tailK, cb)
-    end if
-    screen.DrawScaledObject(f.x - sx * va.bx, f.y - sc * va.by, sx, sc, va.b, col)
-    if vb <> invalid then screen.DrawScaledObject(f.x - sx * vb.bx, f.y - sc * vb.by, sx, sc, vb.b, cb)
-    if away
-        DrawFishTail(screen, va, f.x, f.y, sx, sc, tailK, col)
-        if vb <> invalid then DrawFishTail(screen, vb, f.x, f.y, sx, sc, tailK, cb)
-    end if
+    ' Tail behind the body, or in front when the fish swims away (tail nearer the glass).
+    if not away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col)
+    screen.DrawScaledObject(f.x - sx * v.bx, f.y - sc * v.by, sx, sc, v.b, col)
+    if away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col)
 end sub
 
 ' A view's tail, hinged at its joint and beating (squashed toward the hinge). sx is negative
@@ -383,12 +364,6 @@ sub DrawFishTail(screen as object, v as object, x as float, y as float, sx as fl
     stx = sx * tailK
     screen.DrawScaledObject(x + sx * v.hx - stx * (v.tx + v.hx), y - sc * v.ty, stx, sc, v.t, col)
 end sub
-
-' The tint with its alpha scaled by k.
-function FadeCol(col as integer, k as float) as integer
-    a = col and &hFF
-    return (col and &hFFFFFF00) + Int(a * k)
-end function
 
 ' Dev: one fish of a species drawn at headings from 0 to pi (a U-turn through the glass side),
 ' side by side at z = 1, over a dark band.
