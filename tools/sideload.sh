@@ -22,7 +22,7 @@ if [[ "$release" == "--release" ]]; then
     printf 'run_screensaver=RunScreenSaver\nrun_screensaver_settings=RunScreenSaverSettings\nhidden=1\n'
   } > "$stage/manifest"
 fi
-(cd "$stage" && zip -qr -X "$zip" . -x '.*')
+(cd "$stage" && zip -qr -X "$zip" . -x '.*' '*/.*')
 msg=$(curl -sS --digest -u "rokudev:$ROKU_DEV_PASSWORD" \
   -F "mysubmit=Install" -F "archive=@$zip" \
   "http://$ROKU_IP/plugin_install" | grep -oE '"text":"[^"]*"' | cut -d\" -f4 || true)

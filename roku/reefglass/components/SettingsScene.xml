@@ -3,6 +3,8 @@
      SceneGraph screens (an roScreen there never appears). -->
 <component name="SettingsScene" extends="Scene">
     <interface>
+        <!-- The lighting choices, [{ id, label }], from LightingChoices in source/settings.brs. -->
+        <field id="choices" type="array" onChange="onChoicesSet" />
         <!-- Lighting choice id (see LightingChoices in source/settings.brs). -->
         <field id="lighting" type="string" onChange="onLightingSet" />
         <field id="done" type="boolean" alwaysNotify="true" />

@@ -31,10 +31,10 @@ sub Main(args as dynamic)
     if args.daycycle <> invalid then opts.daycycle = Val(args.daycycle)
     if args.profile <> invalid then opts.profile = true
     if args.trace <> invalid then opts.trace = args.trace
-if args.pose <> invalid then opts.pose = args.pose
-if args.fine <> invalid then opts.poseFine = true
-if args.puff <> invalid then opts.puff = true
-if args.pp <> invalid then opts.posePuff = Val(args.pp)
-if args.pitch <> invalid then opts.posePitch = Val(args.pitch)
+    if args.pose <> invalid then opts.pose = args.pose
+    if args.fine <> invalid then opts.poseFine = true
+    if args.puff <> invalid then opts.puff = true
+    if args.pp <> invalid then opts.posePuff = Val(args.pp)
+    if args.pitch <> invalid then opts.posePitch = Val(args.pitch)
     RunReef(opts, true)
 end sub

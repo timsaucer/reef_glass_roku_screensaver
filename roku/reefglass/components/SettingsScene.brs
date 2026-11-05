@@ -2,19 +2,27 @@
 ' and Back reports done.
 
 sub init()
-    ' Keep in step with LightingChoices() in source/settings.brs.
-    m.ids = ["auto", "day", "dusk", "night"]
-    labels = ["Follow the Roku's clock", "Daytime", "Dusk", "Night"]
+    m.ids = []
     m.list = m.top.findNode("lighting")
+    m.list.setFocus(true)
+end sub
+
+' The choices (LightingChoices() in source/settings.brs) arrive from the main thread, before
+' the saved choice. The list reports picks only once it is filled and set to the saved choice,
+' so filling it never reports (and saves) the first entry.
+sub onChoicesSet()
+    m.ids = []
     root = CreateObject("roSGNode", "ContentNode")
-    for each l in labels
+    for each c in m.top.choices
+        m.ids.Push(c.id)
         item = root.createChild("ContentNode")
-        item.title = l
+        item.title = c.label
     end for
+    m.list.unobserveField("checkedItem")
     m.list.content = root
     m.list.checkedItem = 0
+    onLightingSet()
     m.list.observeField("checkedItem", "onChecked")
-    m.list.setFocus(true)
 end sub
 
 ' The saved choice arrives from the main thread after init, once the screen is shown; focus
@@ -31,7 +39,7 @@ end sub
 
 sub onChecked()
     i = m.list.checkedItem
-    if i >= 0 and m.top.lighting <> m.ids[i] then m.top.lighting = m.ids[i]
+    if i >= 0 and i < m.ids.Count() and m.top.lighting <> m.ids[i] then m.top.lighting = m.ids[i]
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean

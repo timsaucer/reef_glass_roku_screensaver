@@ -440,7 +440,7 @@ sub UpdateAvoid(s as object)
     kz = s.kz
     for i = s.frame mod 3 to n - 1 step 3
         f = fish[i]
-        ax = 0.0 : ay = 0.0 : az = 0.0
+        ay = 0.0 : az = 0.0
         rf = f.sp.sideLen * f.size
         for each o in fish
             if o.lid <> f.lid

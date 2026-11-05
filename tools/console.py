@@ -9,7 +9,26 @@ import time
 import urllib.request
 from pathlib import Path
 
-env = dict(l.split("=", 1) for l in (Path(__file__).resolve().parent.parent / ".env").read_text().split())
+
+def read_env(path):
+    """KEY=value lines of a shell-sourced .env: skips blanks and comments, allows "export",
+    and strips matching quotes around a value."""
+    env = {}
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
+        key, value = line.split("=", 1)
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        env[key.strip()] = value
+    return env
+
+
+env = read_env(Path(__file__).resolve().parent.parent / ".env")
 ip = env["ROKU_IP"]
 secs = float(sys.argv[1])
 s = socket.create_connection((ip, 8085))

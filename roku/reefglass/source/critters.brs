@@ -53,8 +53,8 @@ sub CrittersDraw(s as object, screen as object, t as float)
     DrawDusters(s, screen, t)
 end sub
 
-' Feather dusters snap shut when a fish swims close, then unfurl slowly. A quarter of them are
-' checked against the fish each frame.
+' Feather dusters snap shut when a fish swims close, then unfurl slowly. They are checked
+' against the fish every fourth frame.
 sub UpdateDusters(s as object, t as float, dt as float)
     for each d in s.dusters
         if d.mode = "closing"

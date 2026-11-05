@@ -110,7 +110,11 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
             end for
             s.traced = f
         end if
-        tr = "TRACE t " + Str(Int(t * 10) / 10.0) + " x " + Str(Int(f.x)) + " y " + Str(Int(f.y)) + " z " + Str(Int(f.z * 100) / 100.0) + " hd " + Str(Int(f.hd * 100) / 100.0)
+    end if
+    ' No fish of that species: nothing to trace.
+    if s.opts.trace <> invalid and s.frame mod 15 = 0 and s.traced <> invalid
+        f = s.traced
+        tr ="TRACE t " + Str(Int(t * 10) / 10.0) + " x " + Str(Int(f.x)) + " y " + Str(Int(f.y)) + " z " + Str(Int(f.z * 100) / 100.0) + " hd " + Str(Int(f.hd * 100) / 100.0)
         tr = tr + " spd " + Str(Int(f.spd)) + " puff " + Str(Int(f.puff * 100) / 100.0) + " tx " + Str(Int(f.tx)) + " tz " + Str(Int(f.tz * 100) / 100.0) + " td " + Str(f.turnDir) + " bk " + Str(Int(f.blockT * 10) / 10.0)
         print tr
     end if

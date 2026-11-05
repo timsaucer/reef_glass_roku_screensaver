@@ -19,7 +19,8 @@ sub RunReef(opts as object, isApp as boolean)
     screen.SetAlphaEnable(true)
     port = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
-    StartMemoryMonitor(port)
+    ' Held for the whole run: the monitor's objects must stay alive to deliver their events.
+    mon = StartMemoryMonitor(port)
 
     cfg = ParseJson(ReadAsciiFile("pkg:/scenes/reef.json"))
     s = ReefInit(cfg, opts)
@@ -29,15 +30,27 @@ sub RunReef(opts as object, isApp as boolean)
     if cfg.fps <> invalid then frameMs = 1000 / cfg.fps
     fade = 2.0
     frameClock = CreateObject("roTimespan")
-    clock = CreateObject("roTimespan")
     fpsClock = CreateObject("roTimespan")
     frames = 0
-    last = 0
+    ' Run time in integer ms: dt comes from the difference of two exact counts (in float
+    ' seconds it would quantize as the run grows long and make motion uneven). roTimespan's
+    ' 32-bit ms count overflows after ~24.8 days, so it is restarted daily and what it had
+    ' counted carried forward in a 64-bit total.
+    clock = CreateObject("roTimespan")
+    baseMs = 0&
+    lastMs = 0&
     while true
-        now = clock.TotalMilliseconds() / 1000.0
-        dt = now - last
+        elapsed = clock.TotalMilliseconds()
+        if elapsed >= 86400000
+            baseMs = baseMs + elapsed
+            clock.Mark()
+            elapsed = 0
+        end if
+        ms = baseMs + elapsed
+        dt = (ms - lastMs) / 1000.0
         if dt > 0.1 then dt = 0.1
-        last = now
+        lastMs = ms
+        now = ms / 1000.0
         ReefFrame(s, screen, now, dt)
 
         if now < fade then screen.DrawRect(0, 0, 1920, 1080, &h00000000 + Int(255 * (1 - now / fade)))
