@@ -54,14 +54,13 @@ plate of rock, coral and sand, with fish, critters and light animated over it.
 5. Wide tank (`mflux-generate-flux2-edit -m flux2-klein-4b`, about 1.5 min a try):
    the plate with its reef edited out (`gen/prompts/plate_empty_edit.txt`) gives the empty
    tank; the plate shifted 700 px with a blank side (`reef_extend_<side>.txt`) gives each reef
-   redrawn complete. `tools/depth.py` then `tools/mound.py <draft> <depth> <name> --far 0
-   --crisp-below <row> --skirt <sand row>`
-   cut the reefs and the generated mounds (`mound_*.txt`) as pieces (`--plate <side>`: the
-   plate's own pixels wherever it shows that reef); `tools/retouch.py <name>` applies the
-   PhotoCraft steps in `gen/retouch/<name>.json`; `tools/wideplate.py`
-   builds the background tiles and the cave shade; `tools/widescene.py` writes
-   `scenes/wide.json` from `gen/wide_spec.json` (layout, background parts, and each reef's
-   plate-to-redraw transform, which carries the moray, dusters and homes over).
+   redrawn complete; the end mounds are Z-Image-Turbo drafts (`mound_*.txt`).
+   `tools/widecut.sh` then rebuilds everything from `gen/drafts`: depth maps
+   (`tools/depth.py`), the cuts with their per-piece settings (`tools/mound.py`; `--plate`
+   uses the plate's own pixels wherever it shows the reef), the PhotoCraft retouches in
+   `gen/retouch` (`tools/retouch.py`), the background tiles and cave shade
+   (`tools/wideplate.py`) and `scenes/wide.json` (`tools/widescene.py`, from
+   `gen/wide_spec.json`).
 6. `tools/moray.py` for the eel; `tools/icons.py <screenshot>` for the icons and store poster.
 
 TripoSR setup (`ext/` is gitignored): clone https://github.com/VAST-AI-Research/TripoSR into
