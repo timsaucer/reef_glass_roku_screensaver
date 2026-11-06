@@ -9,7 +9,7 @@
 '
 ' Sprites: moray.png (head and front body facing left, without the lower jaw) and
 ' moray_jaw.png (placed at "jaw" in moray.png px), rotated about "jawHinge" to gape.
-' cave_shade.png is the plate's rock around the cave opening plus the cave's shadow deepening
+' cave_shade.png is the reef's rock around the cave opening plus the cave's shadow deepening
 ' toward the back, drawn over the eel so its body fades into the dark and disappears behind the
 ' real rock edge. The body is clipped at the shade's right edge ("clip").
 
@@ -20,7 +20,7 @@ sub MorayInit(s as object)
     s.moray = {
         body: CreateObject("roBitmap", "pkg:/images/moray.png")
         jaw: CreateObject("roBitmap", "pkg:/images/moray_jaw.png")
-        shade: CreateObject("roBitmap", MorayShadePath(c))
+        shade: CreateObject("roBitmap", "pkg:/images/cave_shade.png")
         out: 0.7, v: 0.0, outT: 0.7, mode: "out", wait: RndRange(6, 14), calm: 0
         bph: 0.0, bper: 5.0, threatNow: false
         from: 0.7, tw: 0.0, dur: 1.0
@@ -31,13 +31,6 @@ sub MorayInit(s as object)
     s.moray.jawRegion = CreateObject("roRegion", jb, 0, 0, jb.GetWidth(), jb.GetHeight())
     s.moray.jawRegion.SetPretranslation(c.jaw[0] - c.jawHinge[0], c.jaw[1] - c.jawHinge[1])
 end sub
-
-' The cave shade: the plate's, or the scene's own ("shadeImg", e.g. the wide tank's, cut from
-' its redrawn reef).
-function MorayShadePath(c as object) as string
-    if c.shadeImg <> invalid then return c.shadeImg
-    return "pkg:/images/cave_shade.png"
-end function
 
 sub MorayUpdate(s as object, t as float, dt as float)
     e = s.moray

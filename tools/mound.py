@@ -39,6 +39,7 @@ from imgio import save_rgba  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES = ROOT / "roku/reefglass/images"
+PLATE = ROOT / "gen/plate"   # the one-screen plate: source of the wide tank\'s reefs, colors, sand
 WORK = ROOT / "gen/work"
 
 ap = argparse.ArgumentParser()
@@ -166,10 +167,10 @@ if a.plate:
     import json as _json
     spec_ = _json.loads((ROOT / "gen/wide_spec.json").read_text())
     M = np.array(spec_["reefs"][a.plate]["affine"], np.float32)
-    plate = np.array(Image.open(IMAGES / "bg.jpg").convert("RGB"))
-    fg = Image.open(IMAGES / "fg.png").convert("RGBA")
+    plate = np.array(Image.open(PLATE / "bg.jpg").convert("RGB"))
+    fg = Image.open(PLATE / "fg.png").convert("RGBA")
     layer = Image.new("RGBA", fg.size, (0, 0, 0, 0))
-    layer.alpha_composite(Image.open(IMAGES / "rocks_low.png").convert("RGBA"), (0, 605))
+    layer.alpha_composite(Image.open(PLATE / "rocks_low.png").convert("RGBA"), (0, 605))
     layer.alpha_composite(fg)
     pa = np.array(layer)[..., 3].astype(np.float32) / 255
     split = 820

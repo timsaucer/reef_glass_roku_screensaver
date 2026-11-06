@@ -1,7 +1,7 @@
 """Usage: .venv/bin/python tools/wideplate.py [gen/wide_spec.json]
 
 Builds the wide tank's background, roku/reefglass/images/wide_bg0.jpg, wide_bg1.jpg (1920 px
-tiles), and the moray's cave shade for it (cave_shade_wide.png).
+tiles), and the moray's cave shade for it (cave_shade.png).
 
 - The empty tank: the one-screen plate (bg.jpg) with its reef edited out (FLUX.2 klein,
   gen/prompts/plate_empty_edit.txt), a few seeds side by side (spec "bgParts": each a draft,
@@ -35,6 +35,7 @@ from widelayout import resolve  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES = ROOT / "roku/reefglass/images"
+PLATE = ROOT / "gen/plate"   # the one-screen plate: source of the wide tank\'s reefs, colors, sand
 WORK = ROOT / "gen/work"
 SAND = 749          # plate row where the sand meets the back glass
 GAP = (765, 875)    # plate columns of open water and sand between its reefs
@@ -94,9 +95,9 @@ GRAIN = 8   # px: sand texture finer than this comes from the plate
 def plate_open_sand():
     """The plate's open sand: below the sand line, away from its reef (fg.png over
     rocks_low.png) by 15 px."""
-    fg = Image.open(IMAGES / "fg.png").convert("RGBA")
+    fg = Image.open(PLATE / "fg.png").convert("RGBA")
     layer = Image.new("RGBA", fg.size, (0, 0, 0, 0))
-    layer.alpha_composite(Image.open(IMAGES / "rocks_low.png").convert("RGBA"), (0, 605))
+    layer.alpha_composite(Image.open(PLATE / "rocks_low.png").convert("RGBA"), (0, 605))
     layer.alpha_composite(fg)
     free = (np.array(layer)[..., 3] < 5).astype(np.uint8)
     free = cv2.erode(free, np.ones((31, 31), np.uint8)) > 0
@@ -140,7 +141,7 @@ def main():
     W = spec["width"]
     global WATER_GAIN
     WATER_GAIN = spec.get("waterGain", 1.0)
-    photo = np.array(Image.open(IMAGES / "bg.jpg").convert("RGB")).astype(np.float32)
+    photo = np.array(Image.open(PLATE / "bg.jpg").convert("RGB")).astype(np.float32)
     h = photo.shape[0]
     gap = photo[:, GAP[0]:GAP[1]]
 
@@ -274,13 +275,13 @@ def main():
     rf = spec["reefs"]["right"]
     M = np.array(rf["affine"], np.float32)
     draft = np.array(Image.open(ROOT / rf["draft"]).convert("RGB")).astype(np.float32)
-    old = np.array(Image.open(IMAGES / "cave_shade.png").convert("RGBA")).astype(np.float32)
+    old = np.array(Image.open(PLATE / "cave_shade.png").convert("RGBA")).astype(np.float32)
     plate_view = cv2.warpAffine(draft, cv2.invertAffineTransform(M), (photo.shape[1], h), flags=cv2.INTER_CUBIC)
     bx, by = SHADE_BOX
     crop = plate_view[by:by + old.shape[0], bx:bx + old.shape[1]]
     shade = np.dstack([crop, old[..., 3]]).clip(0, 255).astype(np.uint8)
-    save_rgba(Image.fromarray(shade, "RGBA"), IMAGES / "cave_shade_wide.png")
-    print("cave_shade_wide.png", (IMAGES / "cave_shade_wide.png").stat().st_size // 1024, "KB")
+    save_rgba(Image.fromarray(shade, "RGBA"), IMAGES / "cave_shade.png")
+    print("cave_shade.png", (IMAGES / "cave_shade.png").stat().st_size // 1024, "KB")
 
     WORK.mkdir(parents=True, exist_ok=True)
     Image.fromarray(out).resize((W // 2, h // 2), Image.LANCZOS).save(WORK / "wideplate_check.jpg", quality=88)

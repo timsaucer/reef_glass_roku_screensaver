@@ -10,7 +10,7 @@ Usage (TripoSR's env, which has moderngl and trimesh):
       for the headings in ANGLES, -60..90 deg (the rest are mirrors), sized so the side view
       is "sideLen" px long (first time: as long as the old <name>_body/tail sprites, whose
       tail split also gives "ped", where the tail joins), and the "views" block of the species in
-      scenes/reef.json (per view: body anchor, tail anchor, tail hinge; see fish.brs).
+      gen/base_scene.json (per view: body anchor, tail anchor, tail hinge; see fish.brs).
       --len/--ped for a new species; --ball 1.2 exports an inflated form (pufferfish) as the
       species' "ball" block, in images/<name>_ball_atlas<p>.png; --under 0.5 shades the
       underside as if lit from above (the damselfish)
@@ -87,7 +87,7 @@ void main() {
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES = ROOT / "roku/reefglass/images"
-SCENE = ROOT / "roku/reefglass/scenes/reef.json"
+SCENE = ROOT / "gen/base_scene.json"
 sys.path.insert(0, str(ROOT / "tools"))
 
 
@@ -254,7 +254,7 @@ def export_views(r, name, S=1024, ball=None, length=None, ped=None):
         sp["sideLen"] = length
         sp["ped"] = ped if ped is not None else 0.22
     # Old side sprites give the length on screen and where the tail joins.
-    # (Recorded in reef.json as "sideLen" and "ped" on the first export.)
+    # (Recorded in gen/base_scene.json as "sideLen" and "ped" on the first export.)
     if "sideLen" not in sp:
         bw = Image.open(IMAGES / f"{name}_body.png").width
         tw = Image.open(IMAGES / f"{name}_tail.png").width

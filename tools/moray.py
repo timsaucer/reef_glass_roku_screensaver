@@ -11,7 +11,7 @@ right and bottom edges) and writes:
   moray_jaw.png   the lower jaw alone, rotated about its hinge to gape
   cave_shade.png  the plate's cave: its rock and its dark interior, with alpha rising from the
                   mouth toward the back, drawn over the eel so its body fades into the dark
-and the moray block of scenes/reef.json (jaw hinge and offset, shade position). moray_full.png
+and the moray block of gen/base_scene.json (jaw hinge and offset, shade position). moray_full.png
 is removed afterward.
 
 Coordinates below are hand traced: JAW on the 450 px wide keyed draft, CAVE on the 1080p plate.
@@ -31,7 +31,8 @@ from imgio import save_rgba  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES = ROOT / "roku/reefglass/images"
-SCENE = ROOT / "roku/reefglass/scenes/reef.json"
+PLATE = ROOT / "gen/plate"   # the one-screen plate: source of the wide tank\'s reefs, colors, sand
+SCENE = ROOT / "gen/base_scene.json"
 WORK = ROOT / "gen/work"
 
 # Lower jaw: below the mouth line from the tip back to the gape corner, then down round the
@@ -119,7 +120,7 @@ def main():
     save_rgba(jo, IMAGES / "moray_jaw.png")
 
     # Cave shade from the plate.
-    bg = np.array(Image.open(IMAGES / "bg.jpg").convert("RGB")).astype(np.float32)
+    bg = np.array(Image.open(PLATE / "bg.jpg").convert("RGB")).astype(np.float32)
     sx0, sy0, sx1, sy1 = SHADE_BOX
     crop = bg[sy0:sy1, sx0:sx1]
     inside = np.zeros((1080, 1920), np.float32)
@@ -135,7 +136,7 @@ def main():
     deep = DEEP[2] * deep * deep * (3 - 2 * deep)
     alpha = (1 - inside) + inside * deep
     shade = np.dstack([crop, alpha * 255]).clip(0, 255).astype(np.uint8)
-    save_rgba(Image.fromarray(shade, "RGBA"), IMAGES / "cave_shade.png")
+    save_rgba(Image.fromarray(shade, "RGBA"), PLATE / "cave_shade.png")
 
     cfg = json.loads(SCENE.read_text())
     m = cfg.get("moray", {})
@@ -152,12 +153,12 @@ def main():
     SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
 
     # Check image: the eel in place, jaw open, over the plate.
-    chk = Image.open(IMAGES / "bg.jpg").convert("RGBA").crop((1300, 700, 1700, 950))
+    chk = Image.open(PLATE / "bg.jpg").convert("RGBA").crop((1300, 700, 1700, 950))
     ox, oy = m["x"] - 1300, m["y"] - bo.height // 2 - 700
     jr = jo.rotate(m["gape"], resample=Image.BICUBIC, center=(hx - jx0, hy - jy0))
     chk.alpha_composite(jr, (ox + jx0, oy + jy0))
     chk.alpha_composite(bo, (ox, oy))
-    chk.alpha_composite(Image.open(IMAGES / "cave_shade.png").convert("RGBA"), (sx0 - 1300, sy0 - 700))
+    chk.alpha_composite(Image.open(PLATE / "cave_shade.png").convert("RGBA"), (sx0 - 1300, sy0 - 700))
     chk.convert("RGB").resize((800, 500)).save(WORK / "moray_check.jpg")
     (IMAGES / "moray_full.png").unlink()
     print(f"moray {bo.size}, jaw {jo.size} at {jx0},{jy0}, hinge {hx:.1f},{hy:.1f}")

@@ -1,6 +1,6 @@
 """Usage: .venv/bin/python tools/widescene.py [gen/wide_spec.json]
 
-Builds scenes/wide.json, the wide panning tank, from scenes/reef.json (species, light, fx)
+Builds scenes/tank.json, the panning tank, from gen/base_scene.json (species, light, fx)
 and a layout spec (gen/wide_spec.json):
 
   width, period          tank width (px) and camera back-and-forth period (s)
@@ -11,15 +11,15 @@ and a layout spec (gen/wide_spec.json):
   reefs                  {left, right}: the plate's two reefs as redrawn pieces: "affine" maps
                          plate px to the redraw's draft, "draftAt" is where the redraw's origin
                          stands in the tank (pieces with "reef": side are placed from it and
-                         their crop, see tools/widelayout.py). Everything reef.json places
+                         their crop, see tools/widelayout.py). Everything the base scene places
                          on a reef (moray, dusters, starfish, homes; plate x < 820: left)
                          moves with it. A species override home [x, y, z, "left"] is in plate
                          px on that reef; without the tag, in tank px.
   low                    [x0, x1] of open sand where cruisers may graze
   species                per-species overrides (e.g. clown count, group, soloSize)
 
-Everything in wide.json is in tank coordinates. The coral map is the near pieces' alpha in
-cells of 40 px, grown by one cell (as tools/coralmask.py does for the one-screen plate).
+Everything in tank.json is in tank coordinates. The coral map is the near pieces' alpha in
+cells of 40 px, grown by one cell.
 """
 import json
 import sys
@@ -67,7 +67,7 @@ def coral_map(spec, cell=40, grow=1):
 def main():
     spec_path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "gen/wide_spec.json"
     spec = resolve(json.loads(spec_path.read_text()))
-    cfg = json.loads((SCENES / "reef.json").read_text())
+    cfg = json.loads((ROOT / "gen/base_scene.json").read_text())
     W = spec["width"]
 
     def side_of(x):
@@ -76,10 +76,6 @@ def main():
     def to_tank(x, y, side=None):
         return plate_to_tank(spec, side or side_of(x), x, y)
 
-    for k in ("plate", "pan"):
-        cfg.pop(k, None)
-    # No caustics: on the wide tank they were hardly visible, for ~3 ms of GPU a frame.
-    cfg.pop("caustics", None)
     cfg["pan"] = {
         "width": W,
         "period": spec["period"],
@@ -104,7 +100,6 @@ def main():
     clip_off = m["clip"] - m["shade"][0]
     m["shade"] = list(to_tank(*m["shade"]))
     m["clip"] = m["shade"][0] + clip_off
-    m["shadeImg"] = "pkg:/images/cave_shade_wide.png"
     cfg["anemone"]["home"] = list(to_tank(*cfg["anemone"]["home"]))
     for name, sp in cfg["species"].items():
         if "homes" in sp:
@@ -115,7 +110,7 @@ def main():
         if "homes" in ov:
             ov["homes"] = [list(to_tank(h[0], h[1], h[3])) + [h[2]] if len(h) > 3 else h for h in ov["homes"]]
         sp.update(ov)
-    out = SCENES / "wide.json"
+    out = SCENES / "tank.json"
     out.write_text(json.dumps(cfg, indent=2) + "\n")
     print("wrote", out)
     print("\n".join(cfg["coral"]["rows"]))

@@ -15,13 +15,13 @@
 '
 ' Depth z (0 far .. 1 near) sets scale, on-screen speed, haze tint and draw order. Fish change
 ' depth freely in open water, but never cross the reef layer (fgZ)
-' while over coral (reef.json "coral" map): that would flip them from in front of the coral
+' while over coral (the scene's "coral" map): that would flip them from in front of the coral
 ' to behind it in a single frame. Over open water the same change is invisible.
 '
 ' Fish keep a little apart (UpdateAvoid): a weak push away from fish close by, through
 ' height and depth only. Far fish stay above the back of the sand floor (roam.backFloor).
 '
-' Behavior (reef.json "species"): every fish cruises between waypoints across the whole tank,
+' Behavior (the scene's "species"): every fish cruises between waypoints across the whole tank,
 ' often leaving the frame. "follow" ("pair" or "school") makes the second and later fish
 ' follow the first; "visit" is the chance of dropping by a spot (its own of "homes", else
 ' "visitAt", else the anemone) to hover a while, and "shuffle" makes that hover fidgety.

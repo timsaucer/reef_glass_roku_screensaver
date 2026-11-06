@@ -1,12 +1,14 @@
-"""Turn a generated reef plate into the tank's plate layers and plate-derived sprites.
+"""Turn a generated reef plate into the plate layers (gen/plate/): the first, one-screen tank's
+art, kept as the source the wide tank's reefs, colors and sand are built from (README step 5).
+The caustic band it records is no longer drawn.
 
 Usage:
   .venv/bin/python tools/plate.py grid <plate.png> <out.jpg>
       1080p copy with a labeled 100 px grid, for reading coordinates and tracing outlines
 
   .venv/bin/python tools/plate.py build <plate.png> --spec gen/plate_spec.json
-      writes roku/reefglass/images/{bg.jpg, rocks_low.png} and the caustic band into
-      scenes/reef.json; the check image goes to gen/work/. fg.png comes from tools/layers.py
+      writes gen/plate/{bg.jpg, rocks_low.png} and the caustic band into
+      gen/base_scene.json; the check image goes to gen/work/. fg.png comes from tools/layers.py
       (depth), run separately.
 
   .venv/bin/python tools/plate.py rocks --spec gen/plate_spec.json
@@ -37,7 +39,8 @@ from imgio import save_rgba  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES = ROOT / "roku/reefglass/images"
-SCENE = ROOT / "roku/reefglass/scenes/reef.json"
+PLATE = ROOT / "gen/plate"   # the one-screen plate: source of the wide tank\'s reefs, colors, sand
+SCENE = ROOT / "gen/base_scene.json"
 WORK = ROOT / "gen/work"
 
 
@@ -106,11 +109,11 @@ def rocks_layer(rgb, spec, cfg):
         otop = min(otop, min(y for _, y in poly) - 4)
     # Where the coral layer (fg.png, drawn later over everything here) is solid, the rocks are
     # never seen: leave them out, which makes this file much smaller.
-    if (IMAGES / "fg.png").exists():
-        fga = np.array(Image.open(IMAGES / "fg.png").convert("RGBA"))[..., 3]
+    if (PLATE / "fg.png").exists():
+        fga = np.array(Image.open(PLATE / "fg.png").convert("RGBA"))[..., 3]
         rocks = rocks * (fga < 250)
     rl = np.dstack([rgb, rocks[..., None] * 255]).clip(0, 255).astype(np.uint8)[otop:]
-    save_rgba(Image.fromarray(rl, "RGBA"), IMAGES / "rocks_low.png")
+    save_rgba(Image.fromarray(rl, "RGBA"), PLATE / "rocks_low.png")
     cfg["caustics"]["top"] = top
     cfg["caustics"]["occluderTop"] = otop
     return top, sand
@@ -120,7 +123,7 @@ def rocks_only(spec_path):
     """Rebuild rocks_low.png alone from the finished plate (bg.jpg)."""
     spec = json.loads(Path(spec_path).read_text())
     cfg = json.loads(SCENE.read_text())
-    rgb = np.array(Image.open(IMAGES / "bg.jpg").convert("RGB"))
+    rgb = np.array(Image.open(PLATE / "bg.jpg").convert("RGB"))
     rocks_layer(rgb, spec, cfg)
     SCENE.write_text(json.dumps(cfg, indent=2) + "\n")
 
@@ -131,7 +134,7 @@ def build(src, spec_path):
     cfg = json.loads(SCENE.read_text())
     WORK.mkdir(parents=True, exist_ok=True)
 
-    Image.fromarray(rgb).save(IMAGES / "bg.jpg", quality=88)
+    Image.fromarray(rgb).save(PLATE / "bg.jpg", quality=88)
 
     top, sand = rocks_layer(rgb, spec, cfg)
 

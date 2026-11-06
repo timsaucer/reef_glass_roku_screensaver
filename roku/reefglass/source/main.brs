@@ -1,5 +1,5 @@
-' Reef Glass screensaver: a photoreal reef-tank plate with procedurally animated fish, critters
-' and light drawn over it.
+' Reef Glass screensaver: a wide, photoreal reef tank the view slowly glides across, with
+' procedurally animated fish, critters and light.
 '
 ' Entry points:
 '   RunScreenSaver          the system screensaver
@@ -22,7 +22,7 @@ sub RunReef(opts as object, isApp as boolean)
     ' Held for the whole run: the monitor's objects must stay alive to deliver their events.
     mon = StartMemoryMonitor(port)
 
-    scene = "reef"
+    scene = "tank"
     if opts.scene <> invalid then scene = opts.scene
     cfg = ParseJson(ReadAsciiFile("pkg:/scenes/" + scene + ".json"))
     s = ReefInit(cfg, opts)

@@ -14,8 +14,8 @@
 '                  (fine=1: only 45 to 90 degrees; pp=<0..1>: that much puffed up;
 '                  pitch=<deg>: climbing at that angle)
 '   puff=1         the pufferfish puffs up as soon as its cooldown allows (set short)
-'   scene=<name>   load scenes/<name>.json (default reef); scene=wide is the wide, panning tank
-'   pan=<s>        in a wide scene, <s> seconds per back-and-forth; cam=<x> pins the camera at
+'   scene=<name>   load scenes/<name>.json (default tank)
+'   pan=<s>        <s> seconds per back-and-forth; cam=<x> pins the camera at
 '                  tank x
 '   fps=<n>        override the frame cap (0: uncapped, to measure headroom)
 '   nofish=1       no fish (the moray and other critters stay), to look closely at the scene

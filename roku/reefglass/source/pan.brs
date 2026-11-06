@@ -1,4 +1,4 @@
-' The wide tank (a scene with a "pan" section, e.g. scenes/wide.json): reef pieces placed
+' The wide tank (the scene's "pan" section, scenes/tank.json): reef pieces placed
 ' along a tank several screens wide over an empty-tank background, with the camera sliding
 ' slowly left and right. Everything in the scene is in tank coordinates; s.camX is the tank x
 ' at the screen's left edge, and every draw subtracts it.
@@ -118,7 +118,6 @@ sub PanFrame(s as object, screen as object, t as float)
     screen.SetAlphaEnable(false)
     PanDrawBg(s, screen)
     screen.SetAlphaEnable(true)
-    DrawCaustics(s, screen, t)
     PanDrawPieces(s, screen, s.pan.far)
     DrawMotes(s, screen, s.motesFar)
     fishes = s.fish

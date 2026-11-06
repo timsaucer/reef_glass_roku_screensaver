@@ -1,5 +1,5 @@
 ' Reef critters: feather duster worms and a starfish. The moray eel in the cave is in
-' moray.brs; the anemone and giant clam are part of the plate.
+' moray.brs; the anemone and giant clam are part of the reef pieces.
 
 sub CrittersInit(s as object)
     cfg = s.cfg
