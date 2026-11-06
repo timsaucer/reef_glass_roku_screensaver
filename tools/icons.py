@@ -29,9 +29,13 @@ for path, (w, h) in out.items():
     d = ImageDraw.Draw(im)
     tw = d.textlength(TITLE, font=f)
     tx, ty = (w - tw) / 2, h * 0.07
+    # A dark glow behind the title (it sits over coral, not open water) and a tight shadow.
+    glow = Image.new("L", im.size, 0)
+    ImageDraw.Draw(glow).text((tx, ty), TITLE, font=f, fill=255, stroke_width=max(2, int(h * 0.012)), stroke_fill=255)
+    im.paste((0, 18, 36), mask=glow.filter(ImageFilter.GaussianBlur(h * 0.02)).point(lambda v: int(v * 0.75)))
     shadow = Image.new("L", im.size, 0)
-    ImageDraw.Draw(shadow).text((tx, ty + 2), TITLE, font=f, fill=200)
-    im.paste((0, 20, 40), mask=shadow.filter(ImageFilter.GaussianBlur(3)))
+    ImageDraw.Draw(shadow).text((tx, ty + 2), TITLE, font=f, fill=230)
+    im.paste((0, 20, 40), mask=shadow.filter(ImageFilter.GaussianBlur(2)))
     ImageDraw.Draw(im).text((tx, ty), TITLE, font=f, fill=(240, 248, 250))
     path.parent.mkdir(parents=True, exist_ok=True)
     im.save(path, quality=90)

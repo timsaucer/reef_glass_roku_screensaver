@@ -7,20 +7,20 @@ Roku's limits.
 
 **Name** (22/30): Reef Glass Screensaver
 
-**On-device description** (247/300):
+**On-device description** (273/300):
 
-> A calm saltwater reef tank on your TV. Clownfish, tangs, damselfish, a pufferfish that puffs up and a moray eel in its cave swim among photoreal coral, with light rippling over the sand. Daylight by default, or dusk, night, or following your clock.
+> A calm saltwater reef tank on your TV, about two screens wide, that the view slowly glides across. Clownfish, tangs, damselfish, a pufferfish that puffs up and a moray eel in its cave swim among photoreal coral. Daylight by default, or dusk, night, or following your clock.
 
-**Online description** (1246/1500):
+**Online description** (1363/1500):
 
 ```
-Reef Glass turns your TV into a quiet saltwater reef tank, seen full screen through the glass.
+Reef Glass turns your TV into a quiet saltwater reef tank seen through the glass. The tank is about two screens wide, and the view glides slowly across it and back.
 
-Clownfish, blue and yellow tangs, royal grammas, a school of blue damselfish and a porcupine pufferfish swim among the coral, turning with real depth, passing in front of and behind the reef, and keeping a little apart. The pufferfish now and then puffs up into a spiny ball. A snowflake moray breathes in its cave and pulls back into the dark when a big fish swims close. Feather duster worms snap shut as fish pass, a starfish creeps over the sand, and light ripples across the sand from the surface.
+Clownfish, blue and yellow tangs, royal grammas, a school of blue damselfish and a porcupine pufferfish swim among the coral, turning with real depth, passing in front of and behind the reef, and keeping a little apart. The pufferfish now and then puffs up into a spiny ball. A snowflake moray breathes in its cave and pulls back into the dark when a big fish swims close. Feather duster worms snap shut as fish pass, a starfish creeps over the sand, light shafts fall from the surface, and the reef is mirrored faintly in the water surface and the back glass.
 
 Lighting is daytime by default; pick a blue dusk, dim moonlit night, or have it follow your Roku's clock under Settings > Theme > Screensavers > Reef Glass > Change screensaver settings. No ads, no accounts, no network access.
 
-About the art: every image was made for Reef Glass. The tank and the animals were generated locally with the open Z-Image-Turbo model (Apache 2.0); the fish were then rebuilt in 3D (TripoSR, MIT) so they turn convincingly. All of the art is dedicated to the public domain under CC0 1.0, and the code is open source under Apache 2.0. Prompts, seeds and source: github.com/timsaucer/reef_glass_roku_screensaver
+About the art: every image was made for Reef Glass, generated and edited locally with open models (Z-Image-Turbo and FLUX.2 klein 4B, both Apache 2.0); the fish were rebuilt in 3D (TripoSR, MIT) so they turn convincingly. All of the art is dedicated to the public domain under CC0 1.0, and the code is open source under Apache 2.0. Prompts, seeds and source: github.com/timsaucer/reef_glass_roku_screensaver
 ```
 
 ## Assets
@@ -28,7 +28,7 @@ About the art: every image was made for Reef Glass. The tank and the animals wer
 | Field | File |
 |---|---|
 | Poster, 540x405 | `store/poster-540x405.jpg` |
-| Screenshots, 1920x1080 | `store/screenshots/1-day.jpg`, `2-day-school.jpg`, `3-dusk.jpg`, `4-night.jpg`, `5-settings.jpg` |
+| Screenshots, 1920x1080 | `store/screenshots/1-day.jpg`, `2-day-anemone.jpg`, `3-day-cave.jpg`, `4-dusk.jpg`, `5-night.jpg`, `6-settings.jpg` |
 | Privacy policy URL | https://github.com/timsaucer/reef_glass_roku_screensaver/blob/main/PRIVACY.md |
 | Terms of use URL | https://github.com/timsaucer/reef_glass_roku_screensaver/blob/main/TERMS.md |
 | Support | https://github.com/timsaucer/reef_glass_roku_screensaver/issues |
