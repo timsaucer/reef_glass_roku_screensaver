@@ -235,6 +235,7 @@ def crop_alpha(im, pad=2):
 # double faces), so they are close enough that each change is a small step: wider side-on and
 # away, where a fish changes little as it turns, down to 2 degrees nearing head-on, where the
 # face and eyes move fastest.
+ATLAS_COLORS = 160  # palette size of the atlas pages: indistinguishable from 256, ~13% smaller
 BEND_DEG = 36  # full bend through a turn, head to tail
 ANGLES = [-60, -50, -40, -30, -20, -10, 0, 8, 16, 24, 31, 38, 44, 50, 55, 60, 64, 68, 72, 75, 78, 81, 84, 86, 88, 90]
 
@@ -332,7 +333,7 @@ def export_views(r, name, S=1024, ball=None, length=None, ped=None):
         # transparent margin, and a region past the page's edge fails to load).
         bottom = max(pl[2] + pl[4] for pl in place.values() if pl[0] == pi)
         pg = pg.crop((0, 0, PW, bottom + 1))
-        save_rgba(pg, IMAGES / f"{prefix}_atlas{pi}.png")
+        save_rgba(pg, IMAGES / f"{prefix}_atlas{pi}.png", colors=ATLAS_COLORS)
 
     def fix(vs):
         # [bx, by, bodySprite, tx, ty, tailSprite, hx, hy] -> body/tail atlas places inline

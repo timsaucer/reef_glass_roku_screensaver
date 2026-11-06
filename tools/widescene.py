@@ -30,6 +30,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from imgio import save_rgba  # noqa: E402
 from widelayout import plate_to_tank, resolve  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,6 +65,28 @@ def coral_map(spec, cell=40, grow=1):
     return {"cell": cell, "rows": ["".join("#" if v else "." for v in r) for r in occ]}
 
 
+def trim_pieces(spec, margin=4):
+    """Writes each piece's package image (images/<name>.png, palette) from its full cut
+    (gen/work/<name>_rgba.png, tools/mound.py), trimmed to the columns that can ever be on
+    screen (inside the tank: a mound running off an end is half outside it), and moves the
+    piece's x by what was trimmed off its left. The package size limit is 4 MB."""
+    W = spec["width"]
+    for p in spec["pieces"]:
+        src = ROOT / "gen/work" / (Path(p["img"]).stem + "_rgba.png")
+        if not src.exists():
+            continue
+        im = Image.open(src).convert("RGBA")
+        sc = p.get("sc", 1.0)
+        pw = round(im.width * sc)
+        a = max(0, -p["x"] - margin)
+        b = min(pw, W - p["x"] + margin)
+        if a > 0 or b < pw:
+            im = im.crop((round(a / sc), 0, round(b / sc), im.height))
+            p["x"] += a
+            print(f"{p['img']}: trimmed to tank columns {a}..{b} of {pw}")
+        save_rgba(im, IMAGES / p["img"])
+
+
 def main():
     spec_path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "gen/wide_spec.json"
     spec = resolve(json.loads(spec_path.read_text()))
@@ -84,6 +107,8 @@ def main():
         "bgBands": spec["bgBands"],
         "pieces": [dict(p, img="pkg:/images/" + p["img"], shadow=False) for p in spec["pieces"]],
     }
+    trim_pieces(spec)
+    cfg["pan"]["pieces"] = [dict(p, img="pkg:/images/" + p["img"], shadow=False) for p in spec["pieces"]]
     cfg["coral"] = coral_map(spec)
     r = cfg["roam"]
     r["x0"], r["x1"] = -260, W + 260
