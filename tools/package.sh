@@ -21,4 +21,4 @@ if [[ -z "$pkg" ]]; then
 fi
 out="build/reefglass-$ver.pkg"
 curl -sS --digest -u "rokudev:$ROKU_DEV_PASSWORD" -o "$out" "http://$ROKU_IP/$pkg"
-echo "$out ($(du -h "$out" | cut -f1))"
+echo "$out ($(stat -f%z "$out") bytes)"
