@@ -59,6 +59,8 @@ sub FishInit(s as object)
         b = Int(255 * (1 - k) + hz.rgb[2] * k)
         s.tints.Push(RGBA(r, g, b, Int(255 * (1 - 0.3 * k))))
     end for
+    ' Dev launch nofish=1: an empty tank, to look closely at the scene.
+    if s.opts.nofish = true then return
     for each name in cfg.species
         sp = cfg.species[name]
         if sp.count > 0
@@ -75,7 +77,10 @@ sub FishInit(s as object)
                 ' A pair or school ("follow"): the first leads, the rest follow it about, each at
                 ' its own place behind and beside it. A pair's follower (the male clownfish) is
                 ' smaller.
-                if sp.follow <> invalid
+                ' "group": only that many fish form it; the rest swim alone, at "soloSize".
+                inGroup = (sp.group = invalid or i < sp.group)
+                if not inGroup and sp.soloSize <> invalid then f.size = sp.soloSize
+                if sp.follow <> invalid and inGroup
                     if lead = invalid
                         lead = f
                     else
@@ -87,6 +92,8 @@ sub FishInit(s as object)
                         if sp.follow = "pair"
                             f.slot = [0.9 * L, 24]
                             f.size = 0.85
+                            ' He faces her, not necessarily his course (look: the heading drawn).
+                            f.look = lead.hd
                         else
                             f.slot = [RndRange(0.6, 2.2) * L, RndRange(-1, 1) * 0.9 * L]
                             f.size = RndRange(0.85, 1.05)
@@ -198,7 +205,7 @@ function NewFish(s as object, sp as object, spr as object, idx as integer) as ob
         x: 0.0, y: 0.0, z: 0.5
         hd: 0.0, spd: 0.0, vy: 0.0, turnRate: 0.0, bend: 0.0, pitch: 0.0, avy: 0.0, avz: 0.0, turnCool: 0.0
         tx: 0.0, ty: 0.0, tz: 0.5
-        face: 1.0, amp: 0.1
+        look: invalid, amp: 0.1
         phase: Rnd(0) * 6.283
         mul: 1.0, timer: 0.0, pause: 0.0
         size: 1.0
@@ -355,6 +362,7 @@ sub FishUpdate(s as object, t as float, dt as float)
         f.hd = f.hd + turn
         if f.hd > kPi then f.hd = f.hd - 2 * kPi
         if f.hd < -kPi then f.hd = f.hd + 2 * kPi
+        if f.look <> invalid then turn = UpdateLook(s, f, w, dt)
         if dt > 0
             f.turnRate = Abs(turn) / dt
             ' Body bend follows the turn: full at the slowest U-turn rate and above, signed by
@@ -409,14 +417,15 @@ sub FishUpdate(s as object, t as float, dt as float)
 
 
         ' Tail: amplitude follows effort (speed relative to cruise, plus turning); frequency
-        ' rises a little with speed.
+        ' rises a little with speed. The beat squashes the tail by at most ~13% at cruise
+        ' (a tail swinging ~30 degrees, seen from the side): more made tails look too small.
         effort = f.spd / sp.speed
-        a = 0.04 + 0.2 * Clamp(effort, 0, 1.5) + 0.06 * Clamp(f.turnRate / sp.turn, 0, 1)
+        a = 0.03 + 0.1 * Clamp(effort, 0, 1.5) + 0.04 * Clamp(f.turnRate / sp.turn, 0, 1)
         f.amp = f.amp + (a - f.amp) * Clamp(3 * dt, 0, 1)
         f.phase = f.phase + dt * 6.283 * sp.beat * (0.5 + 0.5 * Clamp(effort, 0, 2))
 
         ' Cruisers well off-screen may jump to a new depth; nobody can see it.
-        if f.leader = invalid and (f.x < -120 or f.x > 2040) and f.timer > 0 and Rnd(0) < 0.004
+        if f.leader = invalid and (f.x - s.camX < -120 or f.x - s.camX > 2040) and f.timer > 0 and Rnd(0) < 0.004
             r = s.cfg.roam
             if Rnd(0) < r.frontChance or f.y + BodyHalfHeight(s, f, r.back[1]) > r.backFloor then f.z = RndRange(r.front[0], r.front[1]) else f.z = RndRange(r.back[0], r.back[1])
             f.tz = f.z
@@ -472,7 +481,7 @@ function UpdatePuff(s as object, f as object, dt as float) as float
         f.pcool = f.pcool - dt
         if f.pcool <= 0
             ' On its own only where it can be seen: on screen, in front of the reef.
-            go = (Rnd(0) < dt / 150 and f.z > s.cfg.fgZ and f.x > 150 and f.x < 1770)
+            go = (Rnd(0) < dt / 150 and f.z > s.cfg.fgZ and f.x - s.camX > 150 and f.x - s.camX < 1770)
             if s.opts.puff <> invalid then go = true
             if not go and s.frame mod 6 = 0
                 for each o in s.fish
@@ -527,6 +536,40 @@ sub FollowLeader(s as object, f as object, t as float)
     f.pause = 0
     f.timer = 10
 end sub
+
+' A pair's male keeps his eyes on the female: he faces her rather than his course, as far as
+' his speed allows. Nearly still he may face anywhere; at cruising speed only within ~45
+' degrees of his course, so he never looks to be sliding sideways. He turns to face her at his
+' normal turn rate w; returns that turn (for the body bend and tail effort).
+function UpdateLook(s as object, f as object, w as float, dt as float) as float
+    L = f.leader
+    dx = L.x - f.x
+    dzp = (L.z - f.z) / s.kz
+    want = f.hd
+    if dx * dx + dzp * dzp > 400
+        k = Clamp(f.spd / f.cruise, 0, 1)
+        lim = 2.6 - 1.8 * k
+        want = f.hd + Clamp(WrapAngle(Atan2(dzp, dx) - f.hd), -lim, lim)
+        ' Never from straight behind (no view of that): at most ~60 degrees into the tank.
+        sw = Sin(want)
+        if sw < -0.87
+            if Cos(want) >= 0 then want = -1.05 else want = -2.09
+        end if
+    end if
+    d = Clamp(WrapAngle(want - f.look), -w * dt, w * dt)
+    f.look = WrapAngle(f.look + d)
+    return d
+end function
+
+function WrapAngle(a as float) as float
+    while a > 3.14159265
+        a = a - 6.2831853
+    end while
+    while a < -3.14159265
+        a = a + 6.2831853
+    end while
+    return a
+end function
 
 ' Size (and on-screen speed) by depth: the back of the tank is only a little farther from
 ' the viewer than the front glass, so far fish are only somewhat smaller (cfg.depthScale at
@@ -609,25 +652,36 @@ sub SortFish(a as object)
     end for
 end sub
 
+' Draws a fish at its tank position less the camera's (a wide tank pans; else camX is 0).
 sub FishDraw(s as object, screen as object, f as object)
+    x0 = f.x
+    f.x = x0 - s.camX
+    if f.x > -400 and f.x < 2320 then FishDrawAt(s, screen, f)
+    f.x = x0
+end sub
+
+sub FishDrawAt(s as object, screen as object, f as object)
     col = s.tints[Int(f.z * 20 + 0.5)]
     tailK = 1 - f.amp * (0.5 + 0.5 * Cos(f.phase))
     sc = f.size * DepthScale(s, f.z)
     spr = f.spr
     ' Heading to a rendered view: facing right (cos >= 0) directly; facing left as the mirror
     ' of the matching right-facing heading.
-    hd = f.hd
+    ' The heading drawn: where the fish faces (a pair's male faces the female), else its course.
+    fhd = f.hd
+    if f.look <> invalid then fhd = f.look
+    hd = fhd
     mir = 1.0
     if Cos(hd) < 0
         hd = 3.14159265 - hd
         if hd > 3.14159265 then hd = hd - 6.2831853
         mir = -1.0
     end if
-    away = (Sin(f.hd) < 0)
+    away = (Sin(fhd) < 0)
     p = f.puff
     ' Tilt on screen: the full pitch side-on, none head-on (there it would spin the face);
     ' a mirrored fish tilts the other way. A puffed ball barely tilts.
-    th = f.pitch * Abs(Cos(f.hd)) * mir * (1 - p)
+    th = f.pitch * Abs(Cos(fhd)) * mir * (1 - p)
     tr = th * 0.0174533
     rot = { th: th, c: Cos(tr), s: Sin(tr) }
     if p < 0.99
@@ -699,9 +753,12 @@ end sub
 
 ' A view's tail, hinged at its joint and beating (squashed toward the hinge). sx is negative
 ' for a mirrored (left-facing) fish. The hinge turns with the body's tilt (rot: degrees, and
-' its cosine and sine), about the fish's center.
+' its cosine and sine), about the fish's center. The body and tail sprites are cut at the
+' same line, and each is placed at whole pixels on its own, so the tail is set 1.5 px into the
+' body: otherwise a hairline gap can open between them (it showed on the tall yellow tang).
 sub DrawFishTail(screen as object, v as object, x as float, y as float, sx as float, sc as float, tailK as float, col as integer, rot as object)
     dx = sx * v.hx
+    if Abs(dx) > 3 then dx = dx - Sgn(dx) * 1.5
     DrawTilted(screen, x + rot.c * dx, y - rot.s * dx, rot.th, sx * tailK, sc, v.t, v.mt, col)
 end sub
 
@@ -732,7 +789,7 @@ sub DrawPoses(s as object, screen as object, name as string)
             for i = 0 to 8
                 f.hd = s.poseA0 + (s.poseA1 - s.poseA0) * i / 8
                 f.x = 120 + i * 210
-                FishDraw(s, screen, f)
+                FishDrawAt(s, screen, f)
             end for
             return
         end if

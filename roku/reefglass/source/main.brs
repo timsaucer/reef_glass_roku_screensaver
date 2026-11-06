@@ -22,16 +22,23 @@ sub RunReef(opts as object, isApp as boolean)
     ' Held for the whole run: the monitor's objects must stay alive to deliver their events.
     mon = StartMemoryMonitor(port)
 
-    cfg = ParseJson(ReadAsciiFile("pkg:/scenes/reef.json"))
+    scene = "reef"
+    if opts.scene <> invalid then scene = opts.scene
+    cfg = ParseJson(ReadAsciiFile("pkg:/scenes/" + scene + ".json"))
     s = ReefInit(cfg, opts)
 
     ' Frame cap: a steady 30 judders less than an uneven 35-45 on low-end sticks.
     frameMs = 0
     if cfg.fps <> invalid then frameMs = 1000 / cfg.fps
+    if opts.fps <> invalid
+        frameMs = 0
+        if opts.fps > 0 then frameMs = 1000 / opts.fps
+    end if
     fade = 2.0
     frameClock = CreateObject("roTimespan")
     fpsClock = CreateObject("roTimespan")
     frames = 0
+    late = 0
     ' Run time in integer ms: dt comes from the difference of two exact counts (in float
     ' seconds it would quantize as the run grows long and make motion uneven). roTimespan's
     ' 32-bit ms count overflows after ~24.8 days, so it is restarted daily and what it had
@@ -39,6 +46,7 @@ sub RunReef(opts as object, isApp as boolean)
     clock = CreateObject("roTimespan")
     baseMs = 0&
     lastMs = 0&
+    nextMs = 0#
     while true
         elapsed = clock.TotalMilliseconds()
         if elapsed >= 86400000
@@ -56,17 +64,24 @@ sub RunReef(opts as object, isApp as boolean)
         if now < fade then screen.DrawRect(0, 0, 1920, 1080, &h00000000 + Int(255 * (1 - now / fade)))
 
         if frameMs > 0
-            ' Wait out most of the frame, then let SwapBuffers land on the next vsync.
-            left = frameMs - 2 - frameClock.TotalMilliseconds()
+            ' Frames on a fixed schedule (frame n at n * frameMs), not timed from the last one:
+            ' timed from the last swap, the small error of each wait added up and every so
+            ' often a frame came out a vsync early (30.6 fps), a visible hitch in the pan.
+            nextMs = nextMs + frameMs
+            nowMs = baseMs + clock.TotalMilliseconds()
+            if nextMs < nowMs - frameMs then nextMs = nowMs
+            left = Int(nextMs - nowMs) - 2
             if left > 0 then sleep(left)
         end if
         screen.SwapBuffers()
+        if frameMs > 0 and frameClock.TotalMilliseconds() > frameMs * 1.4 then late = late + 1
         frameClock.Mark()
 
         frames = frames + 1
         if fpsClock.TotalMilliseconds() >= 10000
-            print "FPS "; frames / 10.0
+            print "FPS "; frames / 10.0; " late "; late
             frames = 0
+            late = 0
             fpsClock.Mark()
         end if
 

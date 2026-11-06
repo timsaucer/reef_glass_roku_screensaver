@@ -1,5 +1,5 @@
-' Screensaver settings: the tank's lighting, either following the Roku's clock (the default) or
-' held at daytime, dusk or night. Roku opens RunScreenSaverSettings from the screensaver's
+' Screensaver settings: the tank's lighting, held at daytime (the default), dusk or night, or
+' following the Roku's clock. Roku opens RunScreenSaverSettings from the screensaver's
 ' "Change screensaver settings" entry. That context only shows SceneGraph screens, so the UI is
 ' components/SettingsScene.xml; this side loads the saved choice into it and saves it back to
 ' the registry as soon as it changes.
@@ -16,12 +16,12 @@ end function
 
 function LoadLighting() as string
     reg = CreateObject("roRegistrySection", "reefglass")
-    id = "auto"
+    id = "day"
     if reg.Exists("lighting") then id = reg.Read("lighting")
     for each c in LightingChoices()
         if c.id = id then return id
     end for
-    return "auto"
+    return "day"
 end function
 
 ' The hour to hold the tank at for a lighting choice, or invalid to follow the clock.

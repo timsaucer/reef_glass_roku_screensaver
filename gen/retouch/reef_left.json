@@ -1,0 +1,35 @@
+{
+  "note": "The pale coral the plate cuts in half at its left edge, completed by the redraw as a soft blob (draft px 610..710 x 561..641): covered by a small grey-lilac coral colony from an unused draft (soft-coral mound seed 1), darkened to the shade it sits in.",
+  "commands": [
+    [
+      "patch",
+      {
+        "src": "gen/drafts/zit_mound_soft_s1.png",
+        "box": [
+          872,
+          638,
+          998,
+          744
+        ],
+        "feather": 14,
+        "center": [
+          661,
+          602
+        ]
+      }
+    ],
+    [
+      "image.adjustments.hueSaturation",
+      {
+        "hue": 0,
+        "saturation": -15,
+        "lightness": -22
+      }
+    ],
+    [
+      "layer.mergeDown",
+      {}
+    ]
+  ],
+  "coords": "draft"
+}

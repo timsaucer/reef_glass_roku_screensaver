@@ -2,6 +2,7 @@
 
 Writes a 16-bit relative depth map (bright = near) with Depth Anything V2 Small (Apache 2.0).
 """
+import os
 import sys
 
 import numpy as np
@@ -10,7 +11,8 @@ from PIL import Image
 from transformers import pipeline
 
 src, dst = sys.argv[1], sys.argv[2]
-device = "mps" if torch.backends.mps.is_available() else "cpu"
+# DEPTH_DEVICE=cpu keeps it off the GPU (e.g. while an image generation is running).
+device = os.environ.get("DEPTH_DEVICE") or ("mps" if torch.backends.mps.is_available() else "cpu")
 pipe = pipeline("depth-estimation", model="depth-anything/Depth-Anything-V2-Small-hf", device=device)
 img = Image.open(src).convert("RGB")
 d = pipe(img)["predicted_depth"].squeeze().float().cpu().numpy()

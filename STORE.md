@@ -9,7 +9,7 @@ Roku's limits.
 
 **On-device description** (247/300):
 
-> A calm saltwater reef tank on your TV. Clownfish, tangs, damselfish, a pufferfish that puffs up and a moray eel in its cave swim among photoreal coral, with light rippling over the sand. Lighting follows your clock, or stays at day, dusk or night.
+> A calm saltwater reef tank on your TV. Clownfish, tangs, damselfish, a pufferfish that puffs up and a moray eel in its cave swim among photoreal coral, with light rippling over the sand. Daylight by default, or dusk, night, or following your clock.
 
 **Online description** (1246/1500):
 
@@ -18,7 +18,7 @@ Reef Glass turns your TV into a quiet saltwater reef tank, seen full screen thro
 
 Clownfish, blue and yellow tangs, royal grammas, a school of blue damselfish and a porcupine pufferfish swim among the coral, turning with real depth, passing in front of and behind the reef, and keeping a little apart. The pufferfish now and then puffs up into a spiny ball. A snowflake moray breathes in its cave and pulls back into the dark when a big fish swims close. Feather duster worms snap shut as fish pass, a starfish creeps over the sand, and light ripples across the sand from the surface.
 
-Lighting follows your Roku's clock (daylight, a blue dusk, dim moonlight at night), or pick daytime, dusk or night under Settings > Theme > Screensavers > Reef Glass > Change screensaver settings. No ads, no accounts, no network access.
+Lighting is daytime by default; pick a blue dusk, dim moonlit night, or have it follow your Roku's clock under Settings > Theme > Screensavers > Reef Glass > Change screensaver settings. No ads, no accounts, no network access.
 
 About the art: every image was made for Reef Glass. The tank and the animals were generated locally with the open Z-Image-Turbo model (Apache 2.0); the fish were then rebuilt in 3D (TripoSR, MIT) so they turn convincingly. All of the art is dedicated to the public domain under CC0 1.0, and the code is open source under Apache 2.0. Prompts, seeds and source: github.com/timsaucer/reef_glass_roku_screensaver
 ```

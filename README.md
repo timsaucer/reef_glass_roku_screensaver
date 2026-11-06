@@ -10,17 +10,19 @@ plate of rock, coral and sand, with fish, critters and light animated over it.
 - **Critters:** a moray eel in the cave under the right-hand rock, feather duster worms that
   snap shut when fish pass, and a starfish on the sand.
 - **Light:** caustics on the sand, light shafts and drifting marine snow.
-- **Setting:** lighting follows the Roku's clock (day, dusk, moonlit night), or stays at
-  daytime, dusk or night.
+- **Setting:** lighting stays at daytime (the default), dusk or night, or follows the Roku's
+  clock (day, dusk, moonlit night).
 
 ## Layout
 
 - `roku/reefglass/`: the package (BrightScript `roScreen` at 30 fps; SceneGraph only for the
   settings screen)
   - `source/`: `main.brs` (entry points, frame loop), `reef.brs` (draw order, light),
-    `fish.brs` (fish), `critters.brs`, `moray.brs`, `settings.brs`, `dev.brs` (dev builds only)
+    `fish.brs` (fish), `critters.brs`, `moray.brs`, `pan.brs` (wide tank), `settings.brs`,
+    `dev.brs` (dev builds only)
   - `components/`: the settings screen
-  - `scenes/reef.json`: every position and tuning value
+  - `scenes/reef.json`: every position and tuning value; `scenes/wide.json`: the wide,
+    panning tank (in development), built by `tools/widescene.py` from `gen/wide_spec.json`
   - `images/`: built assets, made by `tools/`
 - `tools/`: asset pipeline and device helpers
 - `gen/`: prompts, the drafts that were used, keyed fish photos and 3D meshes, the plate spec
@@ -33,7 +35,8 @@ plate of rock, coral and sand, with fish, critters and light animated over it.
 - `tools/run.sh [secs] [query]`: sideload the dev build, launch it, capture the console and a
   screenshot (`build/shot.jpg`)
 - Launch parameters (see `source/dev.brs`): `hour=`, `daycycle=`, `lighting=`, `settings=1`,
-  `profile=1`, `trace=<species>`, `pose=<species>` (with `fine=`, `pp=`, `pitch=`), `puff=1`
+  `profile=1`, `trace=<species>`, `pose=<species>` (with `fine=`, `pp=`, `pitch=`), `puff=1`,
+  `fps=<n>` (0: uncapped), `scene=wide` (with `pan=<s>`, `cam=<x>`)
 - `tools/sideload.sh roku/reefglass [--release]`, `tools/console.py`, `tools/screenshot.sh`
 - `tools/package.sh`: signed release package for the store (see `STORE.md`)
 
@@ -48,7 +51,18 @@ plate of rock, coral and sand, with fish, critters and light animated over it.
 4. Fish: `ext/venv/bin/python tools/fish3d.py` rebuilds the keyed photo in 3D (TripoSR), then
    `ext/venv/bin/python tools/fishviews.py views <mesh> <name> --photo <keyed.png>` renders and
    packs the views (`--fat`, `--under`, `--len`, `--ped`, `--ball`; `strip` previews a turn).
-5. `tools/moray.py` for the eel; `tools/icons.py <screenshot>` for the icons and store poster.
+5. Wide tank (`mflux-generate-flux2-edit -m flux2-klein-4b`, about 1.5 min a try):
+   the plate with its reef edited out (`gen/prompts/plate_empty_edit.txt`) gives the empty
+   tank; the plate shifted 700 px with a blank side (`reef_extend_<side>.txt`) gives each reef
+   redrawn complete. `tools/depth.py` then `tools/mound.py <draft> <depth> <name> --far 0
+   --crisp-below <row> --skirt <sand row>`
+   cut the reefs and the generated mounds (`mound_*.txt`) as pieces (`--plate <side>`: the
+   plate's own pixels wherever it shows that reef); `tools/retouch.py <name>` applies the
+   PhotoCraft steps in `gen/retouch/<name>.json`; `tools/wideplate.py`
+   builds the background tiles and the cave shade; `tools/widescene.py` writes
+   `scenes/wide.json` from `gen/wide_spec.json` (layout, background parts, and each reef's
+   plate-to-redraw transform, which carries the moray, dusters and homes over).
+6. `tools/moray.py` for the eel; `tools/icons.py <screenshot>` for the icons and store poster.
 
 TripoSR setup (`ext/` is gitignored): clone https://github.com/VAST-AI-Research/TripoSR into
 `ext/TripoSR`, `uv venv -p 3.11 ext/venv`, then `VIRTUAL_ENV=ext/venv uv pip install torch

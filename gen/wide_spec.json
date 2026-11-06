@@ -1,0 +1,139 @@
+{
+  "width": 3400,
+  "period": 158,
+  "bg": [
+    "pkg:/images/wide_bg0.jpg",
+    "pkg:/images/wide_bg1.jpg"
+  ],
+  "bgBands": [
+    [
+      0,
+      1080,
+      1.0
+    ]
+  ],
+  "low": [
+    200,
+    3200
+  ],
+  "pieces": [
+    {
+      "img": "mound_b.png",
+      "x": -353,
+      "y": 562,
+      "shadow": false
+    },
+    {
+      "img": "reef_left.png",
+      "shadow": false,
+      "reef": "left"
+    },
+    {
+      "img": "reef_right.png",
+      "shadow": false,
+      "reef": "right"
+    },
+    {
+      "img": "mound_a.png",
+      "x": 2990,
+      "y": 305,
+      "shadow": false
+    }
+  ],
+  "species": {
+    "clown": {
+      "count": 4,
+      "group": 2,
+      "soloSize": 0.75,
+      "homes": [
+        [
+          505,
+          650,
+          0.955,
+          "left"
+        ],
+        [
+          505,
+          650,
+          0.955,
+          "left"
+        ],
+        [
+          3368,
+          458,
+          0.94
+        ],
+        [
+          3368,
+          458,
+          0.94
+        ]
+      ]
+    }
+  },
+  "ease": 0.15,
+  "bgParts": [
+    {
+      "img": "gen/drafts/flux2_plate_empty_s3.png",
+      "x0": 0,
+      "x1": 1166,
+      "src": 0
+    },
+    {
+      "img": "gen/drafts/flux2_plate_empty_s6.png",
+      "x0": 866,
+      "x1": 2723,
+      "src": 60
+    },
+    {
+      "img": "gen/drafts/flux2_plate_empty_s10.png",
+      "x0": 2423,
+      "x1": 3400,
+      "src": 440
+    }
+  ],
+  "bgFade": 300,
+  "reefs": {
+    "left": {
+      "img": "reef_left.png",
+      "affine": [
+        [
+          1.00821,
+          -0.00532,
+          625.05546
+        ],
+        [
+          0.00532,
+          1.00821,
+          -5.12701
+        ]
+      ],
+      "draft": "gen/drafts/flux2_reef_left_s5.png",
+      "draftAt": [
+        128,
+        0
+      ]
+    },
+    "right": {
+      "img": "reef_right.png",
+      "affine": [
+        [
+          1.00921,
+          0.00104,
+          -692.80183
+        ],
+        [
+          -0.00104,
+          1.00921,
+          -0.95986
+        ]
+      ],
+      "draft": "gen/drafts/flux2_reef_right_s3.png",
+      "draftAt": [
+        1401,
+        0
+      ]
+    }
+  },
+  "waterGain": 0.88
+}

@@ -11,11 +11,8 @@ function ReefInit(cfg as object, opts as object) as object
     s = {
         cfg: cfg
         opts: opts
-        bg: CreateObject("roBitmap", cfg.plate.bg)
-        fg: CreateObject("roBitmap", cfg.plate.fg)
-        caustic: [CreateObject("roBitmap", "pkg:/images/caustic_0.png"), CreateObject("roBitmap", "pkg:/images/caustic_1.png")]
+        caustic: invalid
         ray: CreateObject("roBitmap", "pkg:/images/ray.png")
-        occluder: CreateObject("roBitmap", cfg.caustics.occluder)
         mote: CreateObject("roBitmap", "pkg:/images/mote.png")
         motes: []
         dayK: 1.0
@@ -24,17 +21,27 @@ function ReefInit(cfg as object, opts as object) as object
     }
     s.prof = invalid
     if opts.profile <> invalid then s.prof = { clock: CreateObject("roTimespan"), report: CreateObject("roTimespan"), upd: 0, drw: 0, n: 0 }
+    s.camX = 0.0
     FishInit(s)
     CrittersInit(s)
+    if cfg.pan <> invalid then PanInit(s)
     ' Each mote sways with one of four shared phases (four Sin calls a frame, not one each).
     for i = 1 to cfg.motes.count
         z = Rnd(0)
         s.motes.Push({ x: Rnd(0) * 1920, y: Rnd(0) * 1080, z: z, g: i mod 4, sc: 0.3 + 0.7 * z, vx: 4 + 10 * z, vy: 2 + 7 * z, col: 0 })
     end for
-    ' Big alpha layers are drawn only where they hold pixels (tools/regions.py): the GPU's
-    ' blend cost grows with area, and most of them is transparent.
-    s.fgParts = LayerParts(s.fg, cfg.plate.fgRects, 0)
-    s.occluderParts = LayerParts(s.occluder, cfg.caustics.occluderRects, cfg.caustics.occluderTop)
+    ' The one-screen tank's plate (a wide tank has pieces instead: pan.brs). Big alpha layers
+    ' are drawn only where they hold pixels (tools/regions.py): the GPU's blend cost grows with
+    ' area, and most of them is transparent.
+    ' Caustics are optional (the wide tank has none: hardly visible, and ~3 ms of GPU a frame).
+    if cfg.caustics <> invalid then s.caustic = [CreateObject("roBitmap", "pkg:/images/caustic_0.png"), CreateObject("roBitmap", "pkg:/images/caustic_1.png")]
+    if cfg.plate <> invalid
+        s.bg = CreateObject("roBitmap", cfg.plate.bg)
+        s.fg = CreateObject("roBitmap", cfg.plate.fg)
+        s.occluder = CreateObject("roBitmap", cfg.caustics.occluder)
+        s.fgParts = LayerParts(s.fg, cfg.plate.fgRects, 0)
+        s.occluderParts = LayerParts(s.occluder, cfg.caustics.occluderRects, cfg.caustics.occluderTop)
+    end if
     ' Motes, split by depth once: the far ones go behind the fish, the near ones in front.
     s.motesFar = [] : s.motesNear = []
     for each mo in s.motes
@@ -71,8 +78,18 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
     FishUpdate(s, t, dt)
     CrittersUpdate(s, t, dt)
     UpdateMotes(s, t, dt)
+    if s.pan <> invalid then PanUpdate(s, t)
     if s.prof <> invalid then s.prof.upd = s.prof.upd + s.prof.clock.TotalMilliseconds() : s.prof.clock.Mark()
 
+    if s.pan <> invalid
+        PanFrame(s, screen, t)
+    else
+        ReefDraw(s, screen, t)
+    end if
+    ReefFrameEnd(s, screen, t)
+end sub
+
+sub ReefDraw(s as object, screen as object, t as float)
     screen.SetAlphaEnable(false)
     screen.DrawObject(0, 0, s.bg)
     screen.SetAlphaEnable(true)
@@ -100,6 +117,9 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
     end while
     DrawMotes(s, screen, s.motesNear)
     if s.night > 0 then screen.DrawRect(0, 0, 1920, 1080, s.nightRgba)
+end sub
+
+sub ReefFrameEnd(s as object, screen as object, t as float)
     if s.opts.pose <> invalid then DrawPoses(s, screen, s.opts.pose)
 
     if s.opts.trace <> invalid and s.frame mod 15 = 0
@@ -117,6 +137,15 @@ sub ReefFrame(s as object, screen as object, t as float, dt as float)
         tr ="TRACE t " + Str(Int(t * 10) / 10.0) + " x " + Str(Int(f.x)) + " y " + Str(Int(f.y)) + " z " + Str(Int(f.z * 100) / 100.0) + " hd " + Str(Int(f.hd * 100) / 100.0)
         tr = tr + " spd " + Str(Int(f.spd)) + " puff " + Str(Int(f.puff * 100) / 100.0) + " tx " + Str(Int(f.tx)) + " tz " + Str(Int(f.tz * 100) / 100.0) + " td " + Str(f.turnDir) + " bk " + Str(Int(f.blockT * 10) / 10.0)
         print tr
+        ' A pair: the other fish too (the male's look is the heading he is drawn at).
+        g = f.leader
+        if g = invalid and f.followers <> invalid then g = f.followers[0]
+        if g <> invalid
+            lk = "-"
+            if g.look <> invalid then lk = Str(Int(g.look * 100) / 100.0)
+            if f.look <> invalid then lk = lk + " (traced look " + Str(Int(f.look * 100) / 100.0) + ")"
+            print "  MATE x "; Int(g.x); " z "; Int(g.z * 100) / 100.0; " hd "; Int(g.hd * 100) / 100.0; " look "; lk; " spd "; Int(g.spd)
+        end if
     end if
     if s.prof <> invalid
         p = s.prof
@@ -172,11 +201,12 @@ end sub
 ' Two caustic bands scroll over the sand in opposite directions; where they cross, the pattern
 ' appears to ripple and re-form. Hidden under moonlight.
 sub DrawCaustics(s as object, screen as object, t as float)
+    if s.caustic = invalid then return
     a = Int(255 * s.cfg.caustics.alpha * s.dayK)
     if a < 2 then return
     col = &hFFFFFF00 + a
     top = s.cfg.caustics.top
-    off = [FMod(t * 13, 1024), FMod(300 - t * 8, 1024)]
+    off = [FMod(t * 13 + s.camX, 1024), FMod(300 - t * 8 + s.camX, 1024)]
     for k = 0 to 1
         for j = 0 to 2
             screen.DrawObject(j * 1024 - off[k], top, s.caustic[k], col)
@@ -190,8 +220,13 @@ sub DrawRays(s as object, screen as object, t as float)
     k = 0
     for each r in s.cfg.rays
         a = 255 * 0.16 * r[1] * s.dayK * (0.55 + 0.45 * Sin(t * 0.11 + k * 1.7))
-        x = r[0] + 30 * Sin(t * 0.05 + k * 2.3)
-        screen.DrawScaledObject(x - 128, -40, 1.6, 1.1, s.ray, &hFFFFFF00 + Int(a))
+        x = r[0] + 30 * Sin(t * 0.05 + k * 2.3) - s.camX
+        ' The rays repeat every screen width of a wide (panning) tank.
+        j0 = Int(s.camX / 1920)
+        for j = j0 - 1 to j0 + 1
+            xj = x + j * 1920
+            if xj > -300 and xj < 2100 then screen.DrawScaledObject(xj - 128, -40, 1.6, 1.1, s.ray, &hFFFFFF00 + Int(a))
+        end for
         k = k + 1
     end for
 end sub

@@ -14,6 +14,11 @@
 '                  (fine=1: only 45 to 90 degrees; pp=<0..1>: that much puffed up;
 '                  pitch=<deg>: climbing at that angle)
 '   puff=1         the pufferfish puffs up as soon as its cooldown allows (set short)
+'   scene=<name>   load scenes/<name>.json (default reef); scene=wide is the wide, panning tank
+'   pan=<s>        in a wide scene, <s> seconds per back-and-forth; cam=<x> pins the camera at
+'                  tank x
+'   fps=<n>        override the frame cap (0: uncapped, to measure headroom)
+'   nofish=1       no fish (the moray and other critters stay), to look closely at the scene
 '   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, puff,
 '                  waypoint, U-turn direction, coral block) twice a second
 
@@ -36,5 +41,10 @@ sub Main(args as dynamic)
     if args.puff <> invalid then opts.puff = true
     if args.pp <> invalid then opts.posePuff = Val(args.pp)
     if args.pitch <> invalid then opts.posePitch = Val(args.pitch)
+    if args.scene <> invalid then opts.scene = args.scene
+    if args.pan <> invalid then opts.pan = Val(args.pan)
+    if args.cam <> invalid then opts.cam = Val(args.cam)
+    if args.fps <> invalid then opts.fps = Val(args.fps)
+    if args.nofish <> invalid then opts.nofish = true
     RunReef(opts, true)
 end sub
