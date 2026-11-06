@@ -16,6 +16,9 @@ tiles), and the moray's cave shade for it (cave_shade.png).
   the tank's sand), as the plate has its reef in it: the pieces drawn over them at run time
   only hide fish behind the coral, and they meet their own sand, so no cut edge shows. Each piece's top is also mirrored, rippled, into
   the water surface, as the plate's left reef is.
+- The reef reflected in the back glass (spec "glassReflection": strength, scale, blur, lift):
+  a faint, smaller, blurred ghost of each piece above the sand line, pulled toward the tank's
+  middle, showing in the water between the pieces.
 - The cave shade: the plate's (tools/moray.py) alpha over the right reef's draft at the
   cave, the draft warped back onto the plate's frame (spec "reefs": photo-to-draft affine).
 
@@ -224,6 +227,40 @@ def main():
     grain, has = sand_grain(photo, W, np.random.default_rng(5))
     k = np.clip((np.arange(h) - (SAND + 6)) / 20, 0, 1)[:, None, None] * has
     out = out * (1 - k) + (cv2.GaussianBlur(out, (0, 0), GRAIN) + grain) * k
+
+    # The reef reflected in the back glass, as the plate shows it: for each piece, a faint
+    # ghost on the glass (above the sand line), smaller (the reflection is twice as far away),
+    # its foot on the sand line, pulled toward the tank's middle (perspective), blurred and
+    # washed toward the water. The pieces drawn over it hide most of it; it shows in the
+    # water between and around them.
+    ghost = spec.get("glassReflection", {})
+    gk, gs, gblur = ghost.get("strength", 0.0), ghost.get("scale", 0.62), ghost.get("blur", 3.0)
+    if gk > 0:
+        acc = np.zeros((h, W, 3), np.float32)
+        acc_a = np.zeros((h, W), np.float32)
+        mid = W / 2
+        for p, a, x0, y0, ph, pw, base in placed:
+            gw, gh = max(1, int(pw * gs)), max(1, int(ph * gs))
+            g = cv2.resize(a, (gw, gh), interpolation=cv2.INTER_AREA)
+            g = cv2.GaussianBlur(g, (0, 0), gblur)
+            cxp = x0 + pw / 2
+            cxg = cxp + (mid - cxp) * (1 - gs)
+            gx0 = int(cxg - gw / 2)
+            gy0 = int(SAND + 6 - gh * (base - y0) / ph)   # its base on the sand line
+            ga, gb = max(gx0, 0), min(gx0 + gw, W)
+            ta_, tb_ = max(gy0, 0), min(gy0 + gh, SAND + 6)
+            if ga >= gb or ta_ >= tb_:
+                continue
+            sub = g[ta_ - gy0:tb_ - gy0, ga - gx0:gb - gx0]
+            acc[ta_:tb_, ga:gb] = acc[ta_:tb_, ga:gb] * (1 - sub[..., 3:]) + sub[..., :3] * 255 * sub[..., 3:]
+            acc_a[ta_:tb_, ga:gb] = np.maximum(acc_a[ta_:tb_, ga:gb], sub[..., 3])
+        lum = acc.mean(axis=2, keepdims=True)
+        col = 0.5 * acc + 0.5 * lum                       # half desaturated
+        water = out.copy()
+        col = 0.45 * col + 0.55 * water + ghost.get("lift", 12)   # washed toward the water, a little paler
+        fade = np.clip((np.arange(h) - 60) / 400, 0, 1)[:, None] * np.clip((SAND + 6 - np.arange(h)) / 12, 0, 1)[:, None]
+        k = (gk * acc_a * fade)[..., None]
+        out = out * (1 - k) + col * k
 
     # A soft contact shadow on the sand under each piece's lower outline (the skirts carry the
     # drafts' own; this deepens it where a part meets the sand, e.g. under the clam's lip).

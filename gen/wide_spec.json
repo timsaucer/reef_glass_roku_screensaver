@@ -135,5 +135,11 @@
       ]
     }
   },
-  "waterGain": 0.88
+  "waterGain": 0.88,
+  "glassReflection": {
+    "strength": 0.3,
+    "scale": 0.62,
+    "blur": 3.0,
+    "lift": 12
+  }
 }
