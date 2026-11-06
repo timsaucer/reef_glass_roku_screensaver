@@ -11,12 +11,12 @@ Roku's limits.
 
 > A fully animated reef tank, not a slideshow. Clownfish, tangs, damselfish and a pufferfish that puffs up swim their own paths among photoreal coral, a moray breathes in its cave, and the view glides along a tank two screens wide. Daylight by default, or dusk, night, or your clock.
 
-**Online description** (1437/1500):
+**Online description** (1448/1500):
 
 ```
 Reef Glass is a fully animated aquarium, not a slideshow or a slow pan across a still photo. Every fish swims live, choosing its own path, so the tank never plays the same way twice.
 
-Clownfish, blue and yellow tangs, royal grammas, a school of blue damselfish and a porcupine pufferfish swim among photoreal coral. Built from 3D models, they turn with real depth, bend through their turns, climb and dive, pass in front of and behind the reef, and keep a little apart. The clownfish pair stays together near their anemone. The pufferfish now and then puffs up into a spiny ball. A snowflake moray breathes in its cave and pulls back into the dark when a big fish swims close. Feather duster worms snap shut as fish pass, and a starfish creeps over the sand.
+Clownfish, blue and yellow tangs, royal grammas, a school of blue damselfish and a porcupine pufferfish swim among photoreal coral. Built from 3D models, they turn with real depth, bend through their turns, climb and dive, pass in front of and behind the reef, and keep a little apart. The clownfish pair stays together near their anemone. The pufferfish now and then puffs up into a spiny ball. A bright orange dragon moray breathes in its cave and pulls back into the dark when a big fish swims close. Feather duster worms snap shut as fish pass, and a starfish creeps over the sand.
 
 The tank is about two screens wide, and the view glides slowly across it and back. Light shafts fall from the surface, and the reef is mirrored faintly in the water surface and the back glass.
 

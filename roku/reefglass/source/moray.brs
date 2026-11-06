@@ -109,8 +109,9 @@ sub MorayDraw(s as object, screen as object, t as float)
     x = Int(c.x - s.camX + (1 - e.out) * c.reach + 0.5)
     y = c.y
     y0 = y - e.body.GetHeight() \ 2
-    ' The cave is in shadow: the eel takes a dim tint.
-    col = RGBA(180, 180, 175, 255)
+    ' The cave is in shadow: the eel takes a slightly dim tint (kept light: the dragon moray's
+    ' orange should read clearly against the dark rock).
+    col = RGBA(220, 220, 215, 255)
     ' Gape: the lower jaw turns down about its hinge, then closes.
     u = e.bph * e.bper / 2.5
     g = 0

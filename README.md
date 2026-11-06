@@ -8,7 +8,7 @@ and light animated over them.
   damselfish and a porcupine pufferfish that now and then puffs up. Each fish is a 3D model
   pre-rendered from 26 headings with three strengths of body bend. Fish turn and tilt as they
   climb and dive, pass in front of and behind the reef, and keep a little apart.
-- **Critters:** a moray eel in the cave under the right-hand rock, feather duster worms that
+- **Critters:** a dragon moray in the cave under the right-hand rock, feather duster worms that
   snap shut when fish pass, and a starfish on the sand.
 - **Light:** light shafts, the reef reflected in the water surface, drifting marine snow.
 - **Setting:** lighting stays at daytime (the default), dusk or night, or follows the Roku's

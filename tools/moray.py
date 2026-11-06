@@ -1,7 +1,7 @@
 """Build the moray eel sprites and the cave shade.
 
 Usage:
-  .venv/bin/python tools/cutout.py gen/drafts/zit_moray_s1.png moray_full --crop 150,120,600,576 --width 450
+  .venv/bin/python tools/cutout.py <draft> moray_full <cutout options in gen/moray_trace.json>
   .venv/bin/python tools/moray.py [--width 210] [--tilt 24]
 
 Reads images/moray_full.png (the keyed eel, head facing left, body running off the draft's
@@ -14,7 +14,8 @@ right and bottom edges) and writes:
 and the moray block of gen/base_scene.json (jaw hinge and offset, shade position). moray_full.png
 is removed afterward.
 
-Coordinates below are hand traced: JAW on the 450 px wide keyed draft, CAVE on the 1080p plate.
+Coordinates hand traced: the jaw in gen/moray_trace.json (on the 450 px wide keyed draft), CAVE
+on the 1080p plate.
 """
 import argparse
 import json
@@ -35,12 +36,15 @@ PLATE = ROOT / "gen/plate"   # the one-screen plate: source of the wide tank\'s 
 SCENE = ROOT / "gen/base_scene.json"
 WORK = ROOT / "gen/work"
 
-# Lower jaw: below the mouth line from the tip back to the gape corner, then down round the
-# chin and back along the underside.
-JAW = [(0, 114), (60, 140), (120, 162), (176, 184), (196, 200), (186, 236), (140, 222), (80, 196), (30, 168), (0, 150)]
-HINGE = (184, 192)
+# Hand traced on the keyed draft (images/moray_full.png, 450 px wide), per draft, in
+# gen/moray_trace.json: "jaw", the lower jaw (below the mouth line from the tip back to the
+# gape corner, then down round the chin and back along the underside); "hinge", where it
+# turns; "mouth", the jaw's top edge (for the dark lining revealed as it opens).
+TRACE = json.loads((ROOT / "gen/moray_trace.json").read_text())
+JAW = [tuple(p) for p in TRACE["jaw"]]
+HINGE = tuple(TRACE["hinge"])
+MOUTH = [tuple(p) for p in TRACE["mouth"]]
 EXTEND = 170  # px of body added past the draft's right edge
-MOUTH = [(0, 114), (60, 140), (120, 162), (176, 184)]  # the jaw's top edge, for the lining
 # Cave opening under the right-hand rock (1080p plate px); everything outside it is rock.
 # The right-hand side of the opening follows the plate's own dark interior, so the rock wall the
 # eel slides out from behind has its real edge.
