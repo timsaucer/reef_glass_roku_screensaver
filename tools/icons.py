@@ -1,16 +1,24 @@
-"""Usage: .venv/bin/python tools/icons.py <frame.jpg>
+"""Usage: .venv/bin/python tools/icons.py <frame.jpg> [--zoom 1.25] [--at x,y]
 
 Writes the app icons (roku/reefglass/images/icon_{fhd,hd,sd}.jpg) and the store poster
 (store/poster-540x405.jpg) from a full 1920x1080 frame (a device screenshot, so fish are in
 it), with the title set in Georgia (a macOS system font, rendered into the image).
+
+--zoom  how far in from the frame filling the image (1.25: the default crop)
+--at    the frame px of the crop's center (default: around the anemone, left of center)
 """
-import sys
+import argparse
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-src = Image.open(sys.argv[1]).convert("RGB")
+ap = argparse.ArgumentParser()
+ap.add_argument("frame")
+ap.add_argument("--zoom", type=float, default=1.25)
+ap.add_argument("--at")
+a = ap.parse_args()
+src = Image.open(a.frame).convert("RGB")
 font = "/System/Library/Fonts/Supplemental/Georgia.ttf"
 TITLE = "Reef Glass"
 out = {
@@ -21,9 +29,14 @@ out = {
 }
 for path, (w, h) in out.items():
     # Cover-crop around the anemone and the open water beside it.
-    s = max(w / src.width, h / src.height) * 1.25
+    s = max(w / src.width, h / src.height) * a.zoom
     im = src.resize((int(src.width * s), int(src.height * s)), Image.LANCZOS)
-    x, y = int((im.width - w) * 0.22), int((im.height - h) * 0.55)
+    if a.at:
+        cx, cy = (float(v) * s for v in a.at.split(","))
+        x = int(min(max(cx - w / 2, 0), im.width - w))
+        y = int(min(max(cy - h / 2, 0), im.height - h))
+    else:
+        x, y = int((im.width - w) * 0.22), int((im.height - h) * 0.55)
     im = im.crop((x, y, x + w, y + h))
     f = ImageFont.truetype(font, int(h * 0.17))
     d = ImageDraw.Draw(im)
