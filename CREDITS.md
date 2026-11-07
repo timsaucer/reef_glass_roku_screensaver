@@ -23,5 +23,6 @@ with [mflux](https://github.com/filipstrand/mflux) on 2026-11-03, 2026-11-04 and
 | `mound_a.png`, `mound_b.png` | generated | `mound_branch.txt` seed 1, `mound_plate.txt` seed 1 | cut by depth ([Depth Anything V2 Small](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf), Apache 2.0) with `tools/mound.py` |
 | `reef_left.png`, `reef_right.png`, `cave_shade.png` | the plate's own pixels wherever it shows the two reefs, completed past its frame by FLUX.2 klein 4B redraws | `reef_extend_left.txt` seed 5, `reef_extend_right.txt` seed 3 | `tools/widecut.sh` (`tools/mound.py`, `tools/retouch.py`: a patch of coral from `mound_soft.txt` seed 1); cave shade by `tools/wideplate.py` with the plate's cave alpha (`tools/moray.py`) |
 | `ray.png`, `mote.png`, `puff.png` | procedural | — | `tools/fx.py` |
+| `splash_*.jpg` | rendered (title in Georgia on the tank's dark blue) | — | `tools/splash.py` |
 | `icon_*.jpg`, `store/poster-540x405.jpg` | device screenshot of the above | — | `tools/icons.py` (title in Georgia, rendered) |
 | `store/screenshots/*.jpg` | device screenshots of the above | — | — |

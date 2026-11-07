@@ -61,7 +61,8 @@ and light animated over them.
    uses the plate's own pixels wherever it shows the reef), the PhotoCraft retouches in
    `gen/retouch` (`tools/retouch.py`), the background tiles and cave shade
    (`tools/wideplate.py`) and `scenes/tank.json` (`tools/widescene.py`).
-6. `tools/moray.py` for the eel; `tools/icons.py <screenshot>` for the icons and store poster.
+6. `tools/moray.py` for the eel; `tools/icons.py <screenshot> [--zoom] [--at]` for the icons and
+   store poster; `tools/splash.py` for the splash screens.
 
 TripoSR setup (`ext/` is gitignored): clone https://github.com/VAST-AI-Research/TripoSR into
 `ext/TripoSR`, `uv venv -p 3.11 ext/venv`, then `VIRTUAL_ENV=ext/venv uv pip install torch
