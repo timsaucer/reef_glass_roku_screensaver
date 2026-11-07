@@ -15,6 +15,8 @@ end sub
 
 ' Runs the tank until the system stops the screensaver (or Back is pressed in the dev app).
 sub RunReef(opts as object, isApp as boolean)
+    startClock = CreateObject("roTimespan")
+    firstShown = false
     screen = CreateObject("roScreen", true, 1920, 1080)
     screen.SetAlphaEnable(true)
     port = CreateObject("roMessagePort")
@@ -74,6 +76,11 @@ sub RunReef(opts as object, isApp as boolean)
             if left > 0 then sleep(left)
         end if
         screen.SwapBuffers()
+        if not firstShown
+            ' Launch time (certification 3.2: a launch must complete within 15 s).
+            print "FIRST FRAME after"; startClock.TotalMilliseconds(); " ms of script time"
+            firstShown = true
+        end if
         if frameMs > 0 and frameClock.TotalMilliseconds() > frameMs * 1.4 then late = late + 1
         frameClock.Mark()
 

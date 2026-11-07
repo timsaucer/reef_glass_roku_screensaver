@@ -23,6 +23,12 @@ sub onChoicesSet()
     m.list.checkedItem = 0
     onLightingSet()
     m.list.observeField("checkedItem", "onChecked")
+    ' The screen is fully shown: tell Roku the launch is complete (certification 3.2 measures
+    ' launch time with this beacon).
+    if m.launched <> true
+        m.top.signalBeacon("AppLaunchComplete")
+        m.launched = true
+    end if
 end sub
 
 ' The saved choice arrives from the main thread after init, once the screen is shown; focus
