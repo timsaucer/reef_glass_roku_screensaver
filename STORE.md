@@ -25,6 +25,12 @@ Lighting is daytime by default; pick a blue dusk, dim moonlit night, or have it 
 About the art: every image was made for Reef Glass with open models run locally (Z-Image-Turbo, FLUX.2 klein 4B, TripoSR). All of it is public domain (CC0 1.0); the code is open source (Apache 2.0). Source: github.com/timsaucer/reef_glass_roku_screensaver
 ```
 
+**Release notes, 1.1.2** (367 characters, plain text; Roku's limit not checked):
+
+```
+First public release of Reef Glass, a fully animated reef tank screensaver. Clownfish, tangs, grammas, damselfish and a pufferfish swim live among photoreal coral, a moray breathes in its cave, and the view glides across a tank about two screens wide. Lighting is daytime by default, or choose dusk, night or your Roku's clock. No ads, no accounts, no network access.
+```
+
 ## Assets
 
 | Field | File |
