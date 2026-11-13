@@ -17,10 +17,20 @@ sub PanInit(s as object)
     if s.opts.pan <> invalid and s.opts.pan > 0 then s.pan.period = s.opts.pan
     ' Background: tiles side by side (each at most 2048 px wide, a Roku bitmap's limit),
     ' repeating if the tank is wider than they are. Each band cuts a region from every tile.
+    ' A tile that does not fit in graphics memory repeats the one before it; with none at all
+    ' the background is plain water.
     tiles = []
     for each path in pc.bg
-        tiles.Push(CreateObject("roBitmap", path))
+        tb = LoadBitmap(path)
+        if tb = invalid and tiles.Count() > 0 then tb = tiles.Peek()
+        if tb <> invalid then tiles.Push(tb)
     end for
+    if tiles.Count() = 0
+        print "pan: no memory for the background; plain water"
+        tb = CreateObject("roBitmap", { width: 64, height: 1080, AlphaEnable: false })
+        tb.Clear(&h1F5A78FF)
+        tiles.Push(tb)
+    end if
     s.pan.tileW = tiles[0].GetWidth()
     for each b in pc.bgBands
         regs = []
@@ -31,16 +41,19 @@ sub PanInit(s as object)
     end for
     bmps = {}
     for each p in pc.pieces
-        if bmps[p.img] = invalid then bmps[p.img] = CreateObject("roBitmap", p.img)
+        if bmps[p.img] = invalid then bmps[p.img] = LoadBitmap(p.img)
         b = bmps[p.img]
-        tint = &hFFFFFFFF
-        if p.tint <> invalid then tint = RGBA(p.tint[0], p.tint[1], p.tint[2], p.tint[3])
-        sc = 1.0
-        if p.sc <> invalid then sc = p.sc
-        par = 1.0
-        if p.par <> invalid then par = p.par
-        q = { bmp: b, x: p.x, y: p.y, sc: sc, par: par, w: b.GetWidth() * sc, h: b.GetHeight() * sc, mir: (p.mir = true), tint: tint, shadow: (p.shadow <> false) }
-        if par < 1 then s.pan.far.Push(q) else s.pan.near.Push(q)
+        ' Not enough graphics memory for it: the tank goes without this piece.
+        if b <> invalid
+            tint = &hFFFFFFFF
+            if p.tint <> invalid then tint = RGBA(p.tint[0], p.tint[1], p.tint[2], p.tint[3])
+            sc = 1.0
+            if p.sc <> invalid then sc = p.sc
+            par = 1.0
+            if p.par <> invalid then par = p.par
+            q = { bmp: b, x: p.x, y: p.y, sc: sc, par: par, w: b.GetWidth() * sc, h: b.GetHeight() * sc, mir: (p.mir = true), tint: tint, shadow: (p.shadow <> false) }
+            if par < 1 then s.pan.far.Push(q) else s.pan.near.Push(q)
+        end if
     end for
     s.camX = 0.0
     s.camDx = 0.0

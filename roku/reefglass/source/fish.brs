@@ -63,10 +63,14 @@ sub FishInit(s as object)
     if s.opts.nofish = true then return
     for each name in cfg.species
         sp = cfg.species[name]
-        if sp.count > 0
-            spr = LoadFishViews(name, sp.views)
+        spr = invalid
+        if sp.count > 0 then spr = LoadFishViews(name, sp.views)
+        ' Not enough graphics memory for its atlas (low-end Rokus): the tank goes without it.
+        if sp.count > 0 and spr = invalid then print "fish: no memory for " + name + "; left out"
+        if sp.count > 0 and spr <> invalid
             spr.ball = invalid
             if sp.ball <> invalid then spr.ball = LoadBallViews(name, sp.ball)
+            SizeScratch(spr, spr.ball <> invalid)
             s.sprites[name] = spr
             lead = invalid
             for i = 0 to sp.count - 1
@@ -118,32 +122,103 @@ end sub
 ' in each sprite and where the tail joins the body (relative to the center, px at z = 1).
 ' Headings beyond 90 degrees are drawn as mirrors of these.
 ' v: [bx, by, tx, ty, hx, hy, body page, x, y, w, h, tail page, x, y, w, h]
-' Each view also has mirrored regions (mb, mt) on the mirrored pages, for left-facing fish:
-' the Roku cannot draw a sprite both mirrored and rotated (with any rotation it forces the y
-' scale's sign to follow x's), so tilted left-facing fish use these at positive scale.
+' Left-facing fish are drawn flipped, with a negative x scale. The Roku cannot draw a sprite
+' both flipped and rotated. Measured on the 3810X, OS 16.0.4 (dev fliptest=1): at theta 0
+' DrawTransformedObject mirrors for a negative scaleX or scaleY; at any other theta (90/180/270
+' too) it only rotates: scaleY's sign is ignored and a negative scaleX adds 180 degrees. A
+' negative-width region draws nothing. The docs do not cover negative scales; others found the
+' same on a Roku Ultra (github.com/markwpearce/brighterscript-game-engine, PR 270). So a tilted
+' left-facing fish goes through a scratch bitmap (DrawScratchTilted).
 function NewFishView(pages as object, v as object) as object
-    pb = pages[v[6]] : pt = pages[v[11]]
-    b = CreateObject("roRegion", pb.n, v[7], v[8], v[9], v[10])
-    t = CreateObject("roRegion", pt.n, v[12], v[13], v[14], v[15])
-    mb = CreateObject("roRegion", pb.m, pb.w - v[7] - v[9], v[8], v[9], v[10])
-    mt = CreateObject("roRegion", pt.m, pt.w - v[12] - v[14], v[13], v[14], v[15])
+    b = CreateObject("roRegion", pages[v[6]], v[7], v[8], v[9], v[10])
+    t = CreateObject("roRegion", pages[v[11]], v[12], v[13], v[14], v[15])
     ' Origins moved onto the fish's center (body) and the tail's hinge, so each draws scaled
     ' and tilted about that point.
     b.SetPretranslation(-v[0], -v[1])
     t.SetPretranslation(-(v[2] + v[4]), -v[3])
-    mb.SetPretranslation(-(v[9] - v[0]), -v[1])
-    mt.SetPretranslation(-(v[14] - v[2] - v[4]), -v[3])
-    return { b: b, t: t, mb: mb, mt: mt, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: v[9] }
+    return { b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: v[9], v: v }
 end function
 
-' An atlas page and its mirror image, drawn once at startup (alpha copied as is).
-function LoadAtlasPage(path as string) as object
-    n = CreateObject("roBitmap", path)
-    w = n.GetWidth()
-    m = CreateObject("roBitmap", { width: w, height: n.GetHeight(), AlphaEnable: false })
-    m.DrawScaledObject(w, 0, -1, 1, n)
-    m.Finish()
-    return { n: n, m: m, w: w }
+' How tilted left-facing fish are drawn (s.mirrorMode): "scratch" (DrawScratchTilted), or
+' "flat": flipped, level. Dev: mirror=flat.
+sub FishMirrorMode(s as object)
+    s.rot0 = { th: 0.0, c: 1.0, s: 0.0 }
+    s.mirrorMode = "scratch"
+    if s.opts.mirror <> invalid then s.mirrorMode = s.opts.mirror
+end sub
+
+' Scratch bitmap size for a species (GetScratch): twice the farthest any of its sprites reaches
+' from the fish's center, across and up or down, at the largest scale it is drawn at: size
+' 1.05, stretched up to 1.25 wide between views, and for a puffer swelling 1.25 x 1.7.
+' Body pixels lie at -bx .. w - bx from the center; tail pixels at -tx .. tw - tx (the tail is
+' placed at the hinge, hx, with its origin tx + hx in). Plus a few px for the 1.5 px overlap
+' and the scaled edges.
+sub SizeScratch(spr as object, puffs as boolean)
+    all = []
+    all.Append(spr.views)
+    if spr.bsets <> invalid
+        for each key in spr.bsets
+            all.Append(spr.bsets[key])
+        end for
+    end if
+    rx = 0.0 : ry = 0.0
+    for each fv in all
+        v = fv.v
+        for each e in [v[0], v[9] - v[0], v[2], v[14] - v[2]]
+            if Abs(e) > rx then rx = Abs(e)
+        end for
+        for each e in [v[1], v[10] - v[1], v[3], v[15] - v[3]]
+            if Abs(e) > ry then ry = Abs(e)
+        end for
+    end for
+    kx = 1.05 * 1.25
+    ky = 1.05
+    if puffs
+        kx = kx * 1.25
+        ky = ky * 1.7
+    end if
+    spr.scrW = 2 * Int(rx * kx + 4)
+    spr.scrH = 2 * Int(ry * ky + 4)
+    spr.scr = []
+    spr.scrFrame = -1
+    spr.scrN = 0
+end sub
+
+' A scratch bitmap for drawing one fish of this species flipped (DrawScratchTilted). Each
+' species keeps a pool, reused every frame: the n-th scratch fish of the species this frame
+' takes the n-th. (A bitmap drawn from must not change again before SwapBuffers, so fish
+' cannot share one within a frame.)
+function GetScratch(s as object, spr as object) as object
+    if spr.scrFrame <> s.frame
+        spr.scrFrame = s.frame
+        spr.scrN = 0
+    end if
+    if spr.scrN >= spr.scr.Count()
+        w = spr.scrW : h = spr.scrH
+        bmp = LoadBitmap({ width: w, height: h, AlphaEnable: true })
+        if bmp = invalid then return invalid
+        reg = CreateObject("roRegion", bmp, 0, 0, w, h)
+        reg.SetPretranslation(-w / 2, -h / 2)
+        spr.scr.Push({ bmp: bmp, reg: reg, cx: w / 2, cy: h / 2 })
+    end if
+    sb = spr.scr[spr.scrN]
+    spr.scrN = spr.scrN + 1
+    return sb
+end function
+
+' A left-facing fish tilted th degrees: drawn flipped and level (negative scale, which the
+' Roku draws fine unrotated) in white into a cleared scratch bitmap centered on the fish, then
+' that drawn onto the screen tilted, with the tint. No Finish() on the scratch: it made the
+' script wait on the GPU (60 -> 43-53 fps uncapped) and drawing came out right without it.
+' False when no scratch bitmap fits in memory (the caller then draws the fish level).
+function DrawScratchTilted(s as object, screen as object, f as object, spr as object, hd as float, away as boolean, scx as float, sc as float, tailK as float, col as integer, th as float) as boolean
+    sb = GetScratch(s, spr)
+    if sb = invalid then return false
+    sb.bmp.Clear(0)
+    DrawNormalView(s, sb.bmp, sb.cx, sb.cy, f, spr, hd, -1.0, away, scx, sc, tailK, &hFFFFFFFF, s.rot0)
+    screen.DrawTransformedObject(f.x, f.y, th, 1, 1, sb.reg, col)
+    if s.prof <> invalid then s.prof.scr = s.prof.scr + 1
+    return true
 end function
 
 function LoadFishViews(name as string, vc as object) as object
@@ -154,7 +229,9 @@ function LoadFishViews(name as string, vc as object) as object
     ' The sprites live packed in atlas pages (<name>_atlas<p>.png).
     pages = []
     for p = 0 to vc.pages - 1
-        pages.Push(LoadAtlasPage("pkg:/images/" + name + "_atlas" + p.ToStr() + ".png"))
+        pg = LoadBitmap("pkg:/images/" + name + "_atlas" + p.ToStr() + ".png")
+        if pg = invalid then return invalid
+        pages.Push(pg)
     end for
     for each v in vc.v
         spr.views.Push(NewFishView(pages, v))
@@ -191,7 +268,9 @@ function LoadBallViews(name as string, vc as object) as object
     end for
     pages = []
     for p = 0 to vc.pages - 1
-        pages.Push(LoadAtlasPage("pkg:/images/" + name + "_ball_atlas" + p.ToStr() + ".png"))
+        pg = LoadBitmap("pkg:/images/" + name + "_ball_atlas" + p.ToStr() + ".png")
+        if pg = invalid then return invalid
+        pages.Push(pg)
     end for
     for each v in vc.v
         ball.views.Push(NewFishView(pages, v))
@@ -682,14 +761,24 @@ sub FishDrawAt(s as object, screen as object, f as object)
     ' Tilt on screen: the full pitch side-on, none head-on (there it would spin the face);
     ' a mirrored fish tilts the other way. A puffed ball barely tilts.
     th = f.pitch * Abs(Cos(fhd)) * mir * (1 - p)
+    ' A tilted left-facing fish goes through a scratch bitmap (or, without one, stays level).
+    scratch = (mir < 0 and s.mirrorMode = "scratch" and th <> 0)
+    if mir < 0 and not scratch then th = 0
     tr = th * 0.0174533
     rot = { th: th, c: Cos(tr), s: Sin(tr) }
     if p < 0.99
         ' Normal form; while swelling it stretches (taller more than longer) and fades out
         ' as the ball takes over.
         aN = 1 - SmoothStep(0.45, 0.95, p)
-        DrawNormalView(s, screen, f, spr, hd, mir, away, sc * (1 + 0.25 * p), sc * (1 + 0.7 * p), tailK, FadeCol(col, aN), rot)
+        drawn = false
+        if scratch then drawn = DrawScratchTilted(s, screen, f, spr, hd, away, sc * (1 + 0.25 * p), sc * (1 + 0.7 * p), tailK, FadeCol(col, aN), th)
+        if not drawn
+            if scratch then rot = s.rot0
+            DrawNormalView(s, screen, f.x, f.y, f, spr, hd, mir, away, sc * (1 + 0.25 * p), sc * (1 + 0.7 * p), tailK, FadeCol(col, aN), rot)
+        end if
     end if
+    ' A left-facing ball (barely tilted anyway) is drawn level.
+    if scratch then rot = s.rot0
     if p > 0.01 and spr.ball <> invalid
         ' The ball: nearest of its few views, growing from smaller than the fish to full.
         bl = spr.ball
@@ -702,7 +791,7 @@ sub FishDrawAt(s as object, screen as object, f as object)
         bsx = bs * mir
         cb = FadeCol(col, SmoothStep(0.15, 0.6, p))
         DrawFishTail(screen, v, f.x, f.y, bsx, bs, 1, cb, rot)
-        DrawTilted(screen, f.x, f.y, rot.th, bsx, bs, v.b, v.mb, cb)
+        screen.DrawTransformedObject(f.x, f.y, rot.th, bsx, bs, v.b, cb)
     end if
 end sub
 
@@ -714,7 +803,7 @@ end function
 
 ' The fish's normal form at heading hd (already mapped to -60..90, mirrored by mir): nearest
 ' rendered view, bent while turning, with its outline width interpolated between views.
-sub DrawNormalView(s as object, screen as object, f as object, spr as object, hd as float, mir as float, away as boolean, scx as float, sc as float, tailK as float, col as integer, rot as object)
+sub DrawNormalView(s as object, screen as object, x as float, y as float, f as object, spr as object, hd as float, mir as float, away as boolean, scx as float, sc as float, tailK as float, col as integer, rot as object)
     ' Nearest rendered view (no blending: two views a few degrees apart show double faces).
     ang = spr.ang
     n = ang.Count()
@@ -746,9 +835,9 @@ sub DrawNormalView(s as object, screen as object, f as object, spr as object, hd
     end if
     sx = scx * mir * kx
     ' Tail behind the body, or in front when the fish swims away (tail nearer the glass).
-    if not away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col, rot)
-    DrawTilted(screen, f.x, f.y, rot.th, sx, sc, v.b, v.mb, col)
-    if away then DrawFishTail(screen, v, f.x, f.y, sx, sc, tailK, col, rot)
+    if not away then DrawFishTail(screen, v, x, y, sx, sc, tailK, col, rot)
+    screen.DrawTransformedObject(x, y, rot.th, sx, sc, v.b, col)
+    if away then DrawFishTail(screen, v, x, y, sx, sc, tailK, col, rot)
 end sub
 
 ' A view's tail, hinged at its joint and beating (squashed toward the hinge). sx is negative
@@ -759,17 +848,7 @@ end sub
 sub DrawFishTail(screen as object, v as object, x as float, y as float, sx as float, sc as float, tailK as float, col as integer, rot as object)
     dx = sx * v.hx
     if Abs(dx) > 3 then dx = dx - Sgn(dx) * 1.5
-    DrawTilted(screen, x + rot.c * dx, y - rot.s * dx, rot.th, sx * tailK, sc, v.t, v.mt, col)
-end sub
-
-' Draw scaled and turned th degrees counterclockwise about the region's origin; sx < 0 draws
-' the mirrored region (m) instead of a negative scale, which the Roku cannot rotate.
-sub DrawTilted(screen as object, x as float, y as float, th as float, sx as float, sy as float, r as object, m as object, col as integer)
-    if sx < 0
-        screen.DrawTransformedObject(x, y, th, -sx, sy, m, col)
-    else
-        screen.DrawTransformedObject(x, y, th, sx, sy, r, col)
-    end if
+    screen.DrawTransformedObject(x + rot.c * dx, y - rot.s * dx, rot.th, sx * tailK, sc, v.t, col)
 end sub
 
 ' Dev: one fish of a species drawn at headings from 0 to pi (a U-turn through the glass side),

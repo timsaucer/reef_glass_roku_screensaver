@@ -14,11 +14,15 @@ function ReefInit(cfg as object, opts as object) as object
         frame: 0
     }
     s.prof = invalid
-    if opts.profile <> invalid then s.prof = { clock: CreateObject("roTimespan"), report: CreateObject("roTimespan"), upd: 0, drw: 0, n: 0 }
+    if opts.profile <> invalid then s.prof = { clock: CreateObject("roTimespan"), report: CreateObject("roTimespan"), upd: 0, drw: 0, n: 0, scr: 0 }
     s.camX = 0.0
-    FishInit(s)
-    CrittersInit(s)
+    ' The background and reef first, then the fish: on a Roku short of graphics memory, what
+    ' is left out is what matters least.
     PanInit(s)
+    CrittersInit(s)
+    FishInit(s)
+    FishMirrorMode(s)
+    LogMemory("loaded")
     ' Each mote sways with one of four shared phases (four Sin calls a frame, not one each).
     for i = 1 to cfg.motes.count
         z = Rnd(0)
@@ -80,7 +84,7 @@ sub ReefFrameEnd(s as object, screen as object, t as float)
         p.drw = p.drw + p.clock.TotalMilliseconds()
         p.n = p.n + 1
         if p.report.TotalMilliseconds() >= 5000
-            print "PROF update "; Int(p.upd / p.n * 10) / 10.0; " ms, draw calls "; Int(p.drw / p.n * 10) / 10.0; " ms, hour "; Int(s.hour * 10) / 10.0; " dayK "; Int(s.dayK * 100) / 100.0
+            print "PROF update "; Int(p.upd / p.n * 10) / 10.0; " ms, draw calls "; Int(p.drw / p.n * 10) / 10.0; " ms, hour "; Int(s.hour * 10) / 10.0; " dayK "; Int(s.dayK * 100) / 100.0; " scratch/frame "; Int(p.scr / p.n * 10) / 10.0; " mode "; s.mirrorMode
             dm = ""
             for each d in s.dusters
                 dm = dm + d.mode + " "
@@ -88,7 +92,7 @@ sub ReefFrameEnd(s as object, screen as object, t as float)
             mm = "none"
             if s.moray <> invalid then mm = s.moray.mode
             print "     moray "; mm; " dusters "; dm
-            p.upd = 0 : p.drw = 0 : p.n = 0
+            p.upd = 0 : p.drw = 0 : p.n = 0 : p.scr = 0
             p.report.Mark()
         end if
     end if

@@ -175,3 +175,26 @@ end function
 function RndRange(lo as float, hi as float) as float
     return lo + Rnd(0) * (hi - lo)
 end function
+
+' A bitmap from a file or a size spec, or invalid when graphics memory is short (low-end
+' Rokus have far less than the 3810X). CreateObject itself returns invalid then; a garbage
+' collection and one retry free textures that are no longer referenced.
+' Dev: failbmp=<text> fails every load whose path contains it, to test the fallbacks.
+function LoadBitmap(src as object) as object
+    fail = m.failBmp
+    if fail <> invalid and type(src) <> "roAssociativeArray" and Instr(1, src, fail) > 0
+        print "LoadBitmap: failed (dev) " + src
+        return invalid
+    end if
+    b = CreateObject("roBitmap", src)
+    if b = invalid
+        RunGarbageCollector()
+        b = CreateObject("roBitmap", src)
+    end if
+    if b = invalid
+        label = "mirror"
+        if type(src) <> "roAssociativeArray" then label = src
+        print "LoadBitmap: out of graphics memory for " + label
+    end if
+    return b
+end function
