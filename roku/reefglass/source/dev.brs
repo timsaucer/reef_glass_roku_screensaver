@@ -21,6 +21,7 @@
 '   nofish=1       no fish (the moray and other critters stay), to look closely at the scene
 '   mirror=flat    left-facing fish drawn level, as when no scratch bitmap fits (FishMirrorMode)
 '   failbmp=<text> fail every bitmap load whose path contains <text> (e.g. wide_bg1, puffer)
+'   lowres=1|0     keep the big pictures at 2/3 size, as on a 720p Roku (1), or full size (0) (TextureScale)
 '   fliptest=1     draw a grid of one sprite flipped and rotated (FlipTest), to check how the device mirrors
 '   trace=<name>   print the motion of one fish of that species (e.g. trace=clown) (x, y, z, heading, speed, puff,
 '                  waypoint, U-turn direction, coral block) twice a second
@@ -50,6 +51,7 @@ sub Main(args as dynamic)
     if args.fps <> invalid then opts.fps = Val(args.fps)
     if args.nofish <> invalid then opts.nofish = true
     if args.mirror <> invalid then opts.mirror = args.mirror
+    if args.lowres <> invalid then opts.lowres = (args.lowres = "1")
     if args.failbmp <> invalid then m.failBmp = args.failbmp
     if args.fliptest <> invalid
         FlipTest()

@@ -19,6 +19,8 @@ sub RunReef(opts as object, isApp as boolean)
     firstShown = false
     screen = CreateObject("roScreen", true, 1920, 1080)
     screen.SetAlphaEnable(true)
+    m.texK = TextureScale(opts)
+    print "TEXTURES scale "; m.texK; ", UI "; FormatJson(CreateObject("roDeviceInfo").GetUIResolution())
     port = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
     ' Held for the whole run: the monitor's objects must stay alive to deliver their events.
@@ -192,9 +194,53 @@ function LoadBitmap(src as object) as object
         b = CreateObject("roBitmap", src)
     end if
     if b = invalid
-        label = "mirror"
+        label = "a blank bitmap"
         if type(src) <> "roAssociativeArray" then label = src
         print "LoadBitmap: out of graphics memory for " + label
     end if
     return b
+end function
+
+' How much smaller the big pictures are kept than the scene's 1080p coordinates: 1.5 on a Roku
+' whose UI is 720p (the 3800X stick and other models with less graphics memory; a Roku set to
+' a 720p TV too), where the screen cannot show more detail than that anyway, else 1.
+' Dev: lowres=1 forces 1.5, lowres=0 forces 1.
+function TextureScale(opts as object) as float
+    if opts.lowres <> invalid
+        if opts.lowres then return 1.5
+        return 1.0
+    end if
+    ui = CreateObject("roDeviceInfo").GetUIResolution()
+    if ui <> invalid and ui.height <> invalid and ui.height < 1080 then return 1.5
+    return 1.0
+end function
+
+' A big picture (background tile, reef piece, fish atlas page), kept at the size this Roku
+' shows it: { bmp, w, h, kx, ky }, where w and h are its full size (what the scene's
+' coordinates use) and bmp is drawn scaled kx, ky to fill that. With m.texK > 1 it is loaded
+' full size, shrunk by that factor into a new bitmap (smoothly; alpha copied as is) and the
+' full-size one released, so a 720p Roku holds 4/9 of the pixels. Invalid when graphics memory
+' is short; if only the shrunk copy does not fit, the full-size picture is kept.
+function LoadTexture(path as string) as object
+    b = LoadBitmap(path)
+    if b = invalid then return invalid
+    w = b.GetWidth() : h = b.GetHeight()
+    k = m.texK
+    if k = invalid or k <= 1 then return { bmp: b, w: w, h: h, kx: 1.0, ky: 1.0 }
+    sw = Int(w / k + 0.5) : sh = Int(h / k + 0.5)
+    small = LoadBitmap({ width: sw, height: sh, AlphaEnable: false })
+    if small = invalid then return { bmp: b, w: w, h: h, kx: 1.0, ky: 1.0 }
+    src = CreateObject("roRegion", b, 0, 0, w, h)
+    src.SetScaleMode(1)
+    small.DrawScaledObject(0, 0, sw / w, sh / h, src)
+    small.Finish()
+    return { bmp: small, w: w, h: h, kx: w / sw, ky: h / sh }
+end function
+
+' A region of a texture's bitmap, smoothly scaled when the texture was shrunk (it is then
+' always drawn enlarged).
+function TextureRegion(tx as object, x as dynamic, y as dynamic, w as dynamic, h as dynamic) as object
+    r = CreateObject("roRegion", tx.bmp, x, y, w, h)
+    if tx.kx <> 1 or tx.ky <> 1 then r.SetScaleMode(1)
+    return r
 end function

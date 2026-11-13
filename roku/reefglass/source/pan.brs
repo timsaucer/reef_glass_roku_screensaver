@@ -19,39 +19,44 @@ sub PanInit(s as object)
     ' repeating if the tank is wider than they are. Each band cuts a region from every tile.
     ' A tile that does not fit in graphics memory repeats the one before it; with none at all
     ' the background is plain water.
+    ' On a 720p Roku the tiles and pieces are kept at 2/3 size and drawn enlarged (LoadTexture).
     tiles = []
     for each path in pc.bg
-        tb = LoadBitmap(path)
+        tb = LoadTexture(path)
         if tb = invalid and tiles.Count() > 0 then tb = tiles.Peek()
         if tb <> invalid then tiles.Push(tb)
     end for
     if tiles.Count() = 0
         print "pan: no memory for the background; plain water"
-        tb = CreateObject("roBitmap", { width: 64, height: 1080, AlphaEnable: false })
-        tb.Clear(&h1F5A78FF)
-        tiles.Push(tb)
+        wb = CreateObject("roBitmap", { width: 64, height: 1080, AlphaEnable: false })
+        wb.Clear(&h1F5A78FF)
+        tiles.Push({ bmp: wb, w: 64, h: 1080, kx: 1.0, ky: 1.0 })
     end if
-    s.pan.tileW = tiles[0].GetWidth()
+    s.pan.tileW = tiles[0].w
     for each b in pc.bgBands
         regs = []
         for each tb in tiles
-            regs.Push(CreateObject("roRegion", tb, 0, b[0], tb.GetWidth(), b[1] - b[0]))
+            y0 = Int(b[0] / tb.ky + 0.5)
+            y1 = Int(b[1] / tb.ky + 0.5)
+            regs.Push({ r: TextureRegion(tb, 0, y0, tb.bmp.GetWidth(), y1 - y0), kx: tb.kx, ky: tb.ky })
         end for
         s.pan.bands.Push({ regs: regs, y: b[0], par: b[2] })
     end for
-    bmps = {}
+    texs = {}
     for each p in pc.pieces
-        if bmps[p.img] = invalid then bmps[p.img] = LoadBitmap(p.img)
-        b = bmps[p.img]
+        if texs[p.img] = invalid then texs[p.img] = LoadTexture(p.img)
+        tx = texs[p.img]
         ' Not enough graphics memory for it: the tank goes without this piece.
-        if b <> invalid
+        if tx <> invalid
+            b = tx.bmp
+            if tx.kx <> 1 or tx.ky <> 1 then b = TextureRegion(tx, 0, 0, b.GetWidth(), b.GetHeight())
             tint = &hFFFFFFFF
             if p.tint <> invalid then tint = RGBA(p.tint[0], p.tint[1], p.tint[2], p.tint[3])
             sc = 1.0
             if p.sc <> invalid then sc = p.sc
             par = 1.0
             if p.par <> invalid then par = p.par
-            q = { bmp: b, x: p.x, y: p.y, sc: sc, par: par, w: b.GetWidth() * sc, h: b.GetHeight() * sc, mir: (p.mir = true), tint: tint, shadow: (p.shadow <> false) }
+            q = { bmp: b, x: p.x, y: p.y, sc: sc, kx: sc * tx.kx, ky: sc * tx.ky, par: par, w: tx.w * sc, h: tx.h * sc, mir: (p.mir = true), tint: tint, shadow: (p.shadow <> false) }
             if par < 1 then s.pan.far.Push(q) else s.pan.near.Push(q)
         end if
     end for
@@ -104,7 +109,12 @@ sub PanDrawBg(s as object, screen as object)
         k = Int(ox / tw)
         x = k * tw - ox
         while x < 1920
-            screen.DrawObject(x, b.y, b.regs[k mod n])
+            g = b.regs[k mod n]
+            if g.kx = 1 and g.ky = 1
+                screen.DrawObject(x, b.y, g.r)
+            else
+                screen.DrawScaledObject(x, b.y, g.kx, g.ky, g.r)
+            end if
             x = x + tw
             k = k + 1
         end while
@@ -119,9 +129,9 @@ sub PanDrawPieces(s as object, screen as object, list as object)
             ' A soft contact shadow on the sand under the piece.
             if q.shadow then screen.DrawScaledObject(sx + q.w * 0.08, q.y + q.h * 0.94, q.w * 0.84 / 24, q.h * 0.08 / 24, puff, &h0A141E00 + Int(90 * q.par))
             if q.mir
-                screen.DrawScaledObject(sx + q.w, q.y, -q.sc, q.sc, q.bmp, q.tint)
+                screen.DrawScaledObject(sx + q.w, q.y, -q.kx, q.ky, q.bmp, q.tint)
             else
-                screen.DrawScaledObject(sx, q.y, q.sc, q.sc, q.bmp, q.tint)
+                screen.DrawScaledObject(sx, q.y, q.kx, q.ky, q.bmp, q.tint)
             end if
         end if
     end for

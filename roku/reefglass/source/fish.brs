@@ -129,14 +129,30 @@ end sub
 ' negative-width region draws nothing. The docs do not cover negative scales; others found the
 ' same on a Roku Ultra (github.com/markwpearce/brighterscript-game-engine, PR 270). So a tilted
 ' left-facing fish goes through a scratch bitmap (DrawScratchTilted).
+' On a 720p Roku the atlas pages are kept at 2/3 size (LoadTexture): the regions are cut at
+' that size and drawn enlarged by the page's kx, ky (body: bkx, bky; tail: tkx, tky); every
+' measurement here stays in full-size pixels.
 function NewFishView(pages as object, v as object) as object
-    b = CreateObject("roRegion", pages[v[6]], v[7], v[8], v[9], v[10])
-    t = CreateObject("roRegion", pages[v[11]], v[12], v[13], v[14], v[15])
-    ' Origins moved onto the fish's center (body) and the tail's hinge, so each draws scaled
-    ' and tilted about that point.
-    b.SetPretranslation(-v[0], -v[1])
-    t.SetPretranslation(-(v[2] + v[4]), -v[3])
-    return { b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: v[9], v: v }
+    pb = pages[v[6]] : pt = pages[v[11]]
+    b = AtlasRegion(pb, v[7], v[8], v[9], v[10], v[0], v[1])
+    t = AtlasRegion(pt, v[12], v[13], v[14], v[15], v[2] + v[4], v[3])
+    return { b: b, t: t, bx: v[0], by: v[1], tx: v[2], ty: v[3], hx: v[4], hy: v[5], w: v[9], v: v, bkx: pb.kx, bky: pb.ky, tkx: pt.kx, tky: pt.ky }
+end function
+
+' A sprite's region of an atlas page (x, y, w, h in full-size pixels) with its origin moved to
+' (ox, oy) inside it (the fish's center, or the tail's hinge), so it draws scaled and tilted
+' about that point.
+function AtlasRegion(pg as object, x as dynamic, y as dynamic, w as dynamic, h as dynamic, ox as dynamic, oy as dynamic) as object
+    if pg.kx = 1 and pg.ky = 1
+        r = CreateObject("roRegion", pg.bmp, x, y, w, h)
+        r.SetPretranslation(-ox, -oy)
+        return r
+    end if
+    x0 = Int(x / pg.kx + 0.5) : x1 = Int((x + w) / pg.kx + 0.5)
+    y0 = Int(y / pg.ky + 0.5) : y1 = Int((y + h) / pg.ky + 0.5)
+    r = TextureRegion(pg, x0, y0, x1 - x0, y1 - y0)
+    r.SetPretranslation(-Int(ox / pg.kx + 0.5), -Int(oy / pg.ky + 0.5))
+    return r
 end function
 
 ' How tilted left-facing fish are drawn (s.mirrorMode): "scratch" (DrawScratchTilted), or
@@ -229,7 +245,7 @@ function LoadFishViews(name as string, vc as object) as object
     ' The sprites live packed in atlas pages (<name>_atlas<p>.png).
     pages = []
     for p = 0 to vc.pages - 1
-        pg = LoadBitmap("pkg:/images/" + name + "_atlas" + p.ToStr() + ".png")
+        pg = LoadTexture("pkg:/images/" + name + "_atlas" + p.ToStr() + ".png")
         if pg = invalid then return invalid
         pages.Push(pg)
     end for
@@ -256,7 +272,7 @@ function LoadFishViews(name as string, vc as object) as object
     for k = 0 to spr.ang.Count() - 1
         if Abs(spr.ang[k]) < 0.01 then side = spr.views[k]
     end for
-    spr.bw = side.b.GetWidth() : spr.bh = side.b.GetHeight() : spr.tw = side.t.GetWidth()
+    spr.bw = side.v[9] : spr.bh = side.v[10] : spr.tw = side.v[14]
     return spr
 end function
 
@@ -268,7 +284,7 @@ function LoadBallViews(name as string, vc as object) as object
     end for
     pages = []
     for p = 0 to vc.pages - 1
-        pg = LoadBitmap("pkg:/images/" + name + "_ball_atlas" + p.ToStr() + ".png")
+        pg = LoadTexture("pkg:/images/" + name + "_ball_atlas" + p.ToStr() + ".png")
         if pg = invalid then return invalid
         pages.Push(pg)
     end for
@@ -791,7 +807,7 @@ sub FishDrawAt(s as object, screen as object, f as object)
         bsx = bs * mir
         cb = FadeCol(col, SmoothStep(0.15, 0.6, p))
         DrawFishTail(screen, v, f.x, f.y, bsx, bs, 1, cb, rot)
-        screen.DrawTransformedObject(f.x, f.y, rot.th, bsx, bs, v.b, cb)
+        screen.DrawTransformedObject(f.x, f.y, rot.th, bsx * v.bkx, bs * v.bky, v.b, cb)
     end if
 end sub
 
@@ -836,7 +852,7 @@ sub DrawNormalView(s as object, screen as object, x as float, y as float, f as o
     sx = scx * mir * kx
     ' Tail behind the body, or in front when the fish swims away (tail nearer the glass).
     if not away then DrawFishTail(screen, v, x, y, sx, sc, tailK, col, rot)
-    screen.DrawTransformedObject(x, y, rot.th, sx, sc, v.b, col)
+    screen.DrawTransformedObject(x, y, rot.th, sx * v.bkx, sc * v.bky, v.b, col)
     if away then DrawFishTail(screen, v, x, y, sx, sc, tailK, col, rot)
 end sub
 
@@ -848,7 +864,7 @@ end sub
 sub DrawFishTail(screen as object, v as object, x as float, y as float, sx as float, sc as float, tailK as float, col as integer, rot as object)
     dx = sx * v.hx
     if Abs(dx) > 3 then dx = dx - Sgn(dx) * 1.5
-    screen.DrawTransformedObject(x + rot.c * dx, y - rot.s * dx, rot.th, sx * tailK, sc, v.t, col)
+    screen.DrawTransformedObject(x + rot.c * dx, y - rot.s * dx, rot.th, sx * tailK * v.tkx, sc * v.tky, v.t, col)
 end sub
 
 ' Dev: one fish of a species drawn at headings from 0 to pi (a U-turn through the glass side),
