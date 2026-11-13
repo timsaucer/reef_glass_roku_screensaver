@@ -25,10 +25,10 @@ Lighting is daytime by default; pick a blue dusk, dim moonlit night, or have it 
 About the art: every image was made for Reef Glass with open models run locally (Z-Image-Turbo, FLUX.2 klein 4B, TripoSR). All of it is public domain (CC0 1.0); the code is open source (Apache 2.0). Source: github.com/timsaucer/reef_glass_roku_screensaver
 ```
 
-**Release notes, 1.1.3** (324 characters, plain text; Roku's limit not checked):
+**Release notes, 1.1.3** (311 characters, plain text; Roku's limit not checked):
 
 ```
-Fixes a crash on start on some Rokus with less graphics memory. The tank now loads the background and reef first, and if something still does not fit it leaves out a fish species or a piece of reef instead of closing. Left-swimming fish no longer keep a mirrored copy of their pictures, which halves the memory the fish use.
+Fixes a crash on start on some Rokus with less graphics memory, such as the Roku Streaming Stick (3800X). On 720p Rokus the tank now keeps its pictures at the size the screen shows them, using about half the memory, and if something still does not fit it leaves out a fish or a piece of reef instead of closing.
 ```
 
 ## Assets

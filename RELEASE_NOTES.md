@@ -8,6 +8,9 @@ A fix for Rokus with less graphics memory.
   or a piece of reef instead of crashing.
 - **Less memory for the fish:** fish swimming to the left no longer keep a second, mirrored copy
   of their pictures, which halves the memory the fish use.
+- **Sized for 720p Rokus:** on a Roku whose menus run at 720p, such as the Roku Streaming Stick
+  (3800X), the tank keeps its pictures at the size the screen shows them, using about half the
+  graphics memory. It looks the same as before.
 
 ---
 
