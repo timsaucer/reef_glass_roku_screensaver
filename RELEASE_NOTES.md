@@ -1,3 +1,16 @@
+# Reef Glass 1.1.3
+
+A fix for Rokus with less graphics memory.
+
+- **No more crashes on start:** on some lower-end Rokus, Reef Glass could close as soon as it
+  started, because the tank's pictures did not all fit in graphics memory. It now loads the
+  background and reef first. If something still does not fit, the tank leaves out a fish species
+  or a piece of reef instead of crashing.
+- **Less memory for the fish:** fish swimming to the left no longer keep a second, mirrored copy
+  of their pictures, which halves the memory the fish use.
+
+---
+
 # Reef Glass 1.1.2
 
 The first public release of Reef Glass, a screensaver for Roku: a calm saltwater reef tank seen
